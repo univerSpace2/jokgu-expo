@@ -1,0 +1,80 @@
+erDiagram
+    PLAYER {
+        string id PK
+        string name
+        string contact
+        // 기타 플레이어 관련 정보
+    }
+    
+    MEETING {
+        string id PK
+        date meetingDate
+        time startTime
+        time endTime
+        string location
+    }
+    
+    MEETING_MEMBER {
+        string meetingId FK
+        string playerId FK
+    }
+    
+    GAME {
+        string id PK
+        string meetingId FK
+        int numOfSets
+        int winningScore
+        string penaltyDetails
+    }
+    
+    GAME_TEAM {
+        string id PK
+        string gameId FK
+        string teamName
+    }
+    
+    GAME_TEAM_MEMBER {
+        string gameTeamId FK
+        string playerId FK
+    }
+    
+    GAME_SET {
+        string id PK
+        string gameId FK
+        int setNumber
+        int targetScore
+    }
+    
+    GAME_SET_SCORE {
+        string id PK
+        string gameSetId FK
+        string gameTeamId FK
+        int score
+    }
+    
+    SCORE_LOG {
+        string id PK
+        string gameId FK
+        string gameTeamId FK
+        datetime timestamp
+        string eventDetails
+    }
+    
+    GYOKJANG {
+        string id PK
+        string name
+        string location
+        boolean reservationRequired
+        string reservationMethod
+        string priceInfo
+    }
+    
+    %% 관계
+    PLAYER ||--o{ MEETING_MEMBER : "참여"
+    MEETING ||--o{ MEETING_MEMBER : "구성"
+    MEETING ||--|{ GAME : "포함"
+    GAME ||--o{ GAME_TEAM : "구성"
+    GAME_TEAM ||--o{ GAME_TEAM_MEMBER : "구성"
+    GAME ||--|{ GAME_SET : "단계"
+    GAME_SET ||--|{ GAME_SET_SCORE : "기록"
+    GAME ||--o{ SCORE_LOG : "추적"
