@@ -1,50 +1,36 @@
-# Welcome to your Expo app 👋
+jok9-expo: 족구 모임 관리 앱
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+이 앱은 족구 모임, 플레이어, 게임, 경기장을 관리하는 앱입니다.
 
-## Get started
+## 기능
 
-1. Install dependencies
+- 모임 관리: 날짜, 시간, 장소 및 참가자 관리
+- 플레이어 관리: 플레이어 추가, 수정, 삭제
+- 게임 관리: 팀 구성, 점수 기록, 세트 관리
+- 족구장 관리: 장소, 예약 방법, 가격 정보 관리
 
-   ```bash
-   npm install
-   ```
+## 개발 환경
 
-2. Start the app
+- React Native with Expo
+- TypeScript
+- Supabase (백엔드)
 
-   ```bash
-    npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## 실행 방법
 
 ```bash
-npm run reset-project
+# 의존성 설치
+yarn install
+
+# 개발 서버 실행
+yarn start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 배포
 
-## Learn more
+```bash
+# Android 빌드
+yarn android
 
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+# iOS 빌드
+yarn ios
+```

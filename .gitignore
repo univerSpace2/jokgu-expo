@@ -36,3 +36,29 @@ yarn-error.*
 *.tsbuildinfo
 
 app-example
+
+# Expo OTA updates
+.expo-shared/
+
+# Generated files
+.docusaurus
+.cache/
+
+# Android/iOS build
+android/
+ios/
+*.apk
+*.aab
+*.ipa
+
+# VSCode
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+
+# Tests
+coverage/
+
+.env
