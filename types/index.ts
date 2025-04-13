@@ -23,12 +23,15 @@ export interface Game {
   num_of_sets: number;
   winning_score: number;
   penalty_details?: string;
+  use_deuce?: boolean;
+  wins_required?: number;
 }
 
 export interface GameTeam {
   id: string;
   game_id: string;
   team_name?: string;
+  team_color?: string;
 }
 
 export interface GameTeamMember {
@@ -54,6 +57,7 @@ export interface ScoreLog {
   id: string;
   game_id: string;
   game_team_id: string;
+  game_set_id?: string;
   event_timestamp: string;
   event_details?: string;
 }

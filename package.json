@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@expo/vector-icons": "^14.0.2",
-    "@react-native-async-storage/async-storage": "^2.1.2",
+    "@react-native-async-storage/async-storage": "1.23.1",
     "@react-navigation/bottom-tabs": "^7.2.0",
     "@react-navigation/native": "^7.0.14",
     "@supabase/supabase-js": "^2.49.4",
@@ -53,6 +53,13 @@
     "jest-expo": "~52.0.6",
     "react-test-renderer": "18.3.1",
     "typescript": "^5.3.3"
+  },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "listUnknownPackages": false
+      }
+    }
   },
   "private": true
 }

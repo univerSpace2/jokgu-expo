@@ -29,15 +29,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="games"
-        options={{
-          title: "게임",
-          tabBarIcon: ({ color }) => (
-            <TabBarIcon name="gamepad" color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="grounds"
         options={{
           title: "족구장",

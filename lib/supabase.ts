@@ -84,6 +84,8 @@ export type Database = {
           meeting_id: string | null;
           num_of_sets: number;
           winning_score: number;
+          wins_required: number;
+          use_deuce: boolean;
           penalty_details: string | null;
         };
         Insert: {
@@ -91,6 +93,8 @@ export type Database = {
           meeting_id?: string | null;
           num_of_sets: number;
           winning_score: number;
+          wins_required?: number;
+          use_deuce?: boolean;
           penalty_details?: string | null;
         };
         Update: {
@@ -98,6 +102,8 @@ export type Database = {
           meeting_id?: string | null;
           num_of_sets?: number;
           winning_score?: number;
+          wins_required?: number;
+          use_deuce?: boolean;
           penalty_details?: string | null;
         };
       };
@@ -106,16 +112,19 @@ export type Database = {
           id: string;
           game_id: string;
           team_name: string | null;
+          team_color: string | null;
         };
         Insert: {
           id?: string;
           game_id: string;
           team_name?: string | null;
+          team_color?: string | null;
         };
         Update: {
           id?: string;
           game_id?: string;
           team_name?: string | null;
+          team_color?: string | null;
         };
       };
       game_team_member: {
@@ -177,6 +186,7 @@ export type Database = {
           id: string;
           game_id: string;
           game_team_id: string;
+          game_set_id: string | null;
           event_timestamp: string;
           event_details: string | null;
         };
@@ -184,6 +194,7 @@ export type Database = {
           id?: string;
           game_id: string;
           game_team_id: string;
+          game_set_id?: string | null;
           event_timestamp?: string;
           event_details?: string | null;
         };
@@ -191,6 +202,7 @@ export type Database = {
           id?: string;
           game_id?: string;
           game_team_id?: string;
+          game_set_id?: string | null;
           event_timestamp?: string;
           event_details?: string | null;
         };

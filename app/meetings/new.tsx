@@ -10,20 +10,24 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
-import { Player } from "../../types";
+import { Player, JokguGround } from "../../types";
+import { groundAPI } from "../../lib/api";
 
 export default function NewMeetingScreen() {
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [location, setLocation] = useState("");
+  const [locationId, setLocationId] = useState(""); // 선택된 족구장의 ID
   const [loading, setLoading] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
+  const [grounds, setGrounds] = useState<JokguGround[]>([]);
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
   const router = useRouter();
 
   useEffect(() => {
     fetchPlayers();
+    fetchGrounds();
   }, []);
 
   async function fetchPlayers() {
@@ -44,6 +48,15 @@ export default function NewMeetingScreen() {
     }
   }
 
+  async function fetchGrounds() {
+    try {
+      const data = await groundAPI.getAll();
+      setGrounds(data || []);
+    } catch (error) {
+      console.error("족구장 목록을 불러오는 중 오류 발생:", error);
+    }
+  }
+
   function togglePlayerSelection(id: string) {
     setSelectedPlayers((prevSelected) => {
       if (prevSelected.includes(id)) {
@@ -52,6 +65,11 @@ export default function NewMeetingScreen() {
         return [...prevSelected, id];
       }
     });
+  }
+
+  function handleGroundSelection(id: string, name: string) {
+    setLocationId(id);
+    setLocation(name);
   }
 
   async function handleSubmit() {
@@ -154,12 +172,46 @@ export default function NewMeetingScreen() {
 
         <View style={styles.formGroup}>
           <Text style={styles.label}>장소</Text>
-          <TextInput
-            style={styles.input}
-            value={location}
-            onChangeText={setLocation}
-            placeholder="장소를 입력하세요 (선택사항)"
-          />
+          {location ? (
+            <View style={styles.selectedLocation}>
+              <Text style={styles.selectedLocationText}>{location}</Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setLocation("");
+                  setLocationId("");
+                }}
+              >
+                <Text style={styles.changeLocationText}>변경</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.groundsList}>
+              {grounds.map((ground) => (
+                <TouchableOpacity
+                  key={ground.id}
+                  style={[
+                    styles.groundItem,
+                    locationId === ground.id && styles.groundItemSelected,
+                  ]}
+                  onPress={() => handleGroundSelection(ground.id, ground.name)}
+                >
+                  <Text
+                    style={[
+                      styles.groundName,
+                      locationId === ground.id && styles.groundNameSelected,
+                    ]}
+                  >
+                    {ground.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              {grounds.length === 0 && (
+                <Text style={styles.noGroundsText}>
+                  등록된 족구장이 없습니다.
+                </Text>
+              )}
+            </View>
+          )}
         </View>
 
         <View style={styles.formGroup}>
@@ -250,23 +302,71 @@ const styles = StyleSheet.create({
     padding: 12,
     fontSize: 16,
   },
+  groundsList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    marginTop: 8,
+  },
+  groundItem: {
+    backgroundColor: "#f8f9fa",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    margin: 4,
+    borderWidth: 1,
+    borderColor: "#ced4da",
+  },
+  groundItemSelected: {
+    backgroundColor: "#007bff",
+    borderColor: "#007bff",
+  },
+  groundName: {
+    color: "#212529",
+  },
+  groundNameSelected: {
+    color: "white",
+  },
+  selectedLocation: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ced4da",
+    borderRadius: 4,
+    padding: 12,
+  },
+  selectedLocationText: {
+    fontSize: 16,
+  },
+  changeLocationText: {
+    color: "#007bff",
+    fontWeight: "500",
+  },
+  noGroundsText: {
+    color: "#6c757d",
+    fontStyle: "italic",
+    padding: 8,
+  },
   playersList: {
     flexDirection: "row",
     flexWrap: "wrap",
     marginTop: 8,
   },
   playerItem: {
-    backgroundColor: "#e9ecef",
-    borderRadius: 16,
-    paddingVertical: 6,
+    backgroundColor: "#f8f9fa",
     paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
     margin: 4,
+    borderWidth: 1,
+    borderColor: "#ced4da",
   },
   playerItemSelected: {
     backgroundColor: "#007bff",
+    borderColor: "#007bff",
   },
   playerName: {
-    fontSize: 14,
+    color: "#212529",
   },
   playerNameSelected: {
     color: "white",

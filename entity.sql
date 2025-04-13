@@ -32,6 +32,8 @@ CREATE TABLE game (
     meeting_id UUID,  -- 모임에 속할 경우
     num_of_sets INTEGER NOT NULL,   -- 진행할 세트 수 (예: 최대 3세트)
     winning_score INTEGER NOT NULL, -- 세트당 목표 점수 (예: 21점)
+    wins_required INTEGER NOT NULL DEFAULT 1, -- 승리에 필요한 세트 수 (예: 2세트)
+    use_deuce BOOLEAN NOT NULL DEFAULT FALSE, -- 듀스 사용 여부
     penalty_details TEXT,           -- 내기/벌칙 관련 상세 설정
     FOREIGN KEY (meeting_id) REFERENCES meeting(id) ON DELETE SET NULL
 );

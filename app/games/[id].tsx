@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   StyleSheet,
   View,
@@ -6,12 +6,23 @@ import {
   Alert,
   TouchableOpacity,
   ScrollView,
+  RefreshControl,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
 import Card from "../../components/ui/Card";
 import Loading from "../../components/ui/Loading";
-import { Game, GameSet, GameTeam, Player } from "../../types";
+import {
+  Game,
+  GameSet,
+  GameTeam,
+  Player,
+  ScoreLog as ScoreLogType,
+} from "../../types";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { gameAPI } from "../../lib/api";
+import ScoreCounter from "./components/ScoreCounter";
+import ScoreLogComponent from "./components/ScoreLog";
 
 interface GameWithDetails extends Game {
   meeting_date?: string;
@@ -21,468 +32,728 @@ interface GameWithDetails extends Game {
 
 export default function GameDetailScreen() {
   const { id } = useLocalSearchParams();
-  const [game, setGame] = useState<GameWithDetails | null>(null);
+  const gameId = Array.isArray(id) ? id[0] : id;
+
+  const [game, setGame] = useState<Game | null>(null);
+  const [teams, setTeams] = useState<GameTeam[]>([]);
+  const [teamMembers, setTeamMembers] = useState<Record<string, Player[]>>({});
+  const [gameSets, setGameSets] = useState<GameSet[]>([]);
+  const [currentSetIndex, setCurrentSetIndex] = useState(0);
+  const [scores, setScores] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
-  const [activeSetId, setActiveSetId] = useState<string | null>(null);
-  const [scores, setScores] = useState<Record<string, Record<string, number>>>(
-    {}
-  );
+  const [refreshing, setRefreshing] = useState(false);
+  const [scoreLogs, setScoreLogs] = useState<ScoreLogType[]>([]);
+  const [isDeuceActive, setIsDeuceActive] = useState(false);
+  const [setWinners, setSetWinners] = useState<Record<string, string>>({});
   const router = useRouter();
 
-  useEffect(() => {
-    if (id) {
-      fetchGameDetails();
-    }
-  }, [id]);
+  const fetchGameDetails = useCallback(async () => {
+    if (!gameId) return;
 
-  async function fetchGameDetails() {
     try {
       setLoading(true);
 
       // 1. 게임 정보 가져오기
-      const { data: gameData, error: gameError } = await supabase
-        .from("game")
-        .select(
-          `
-          *,
-          meeting:meeting_id (meeting_date)
-        `
-        )
-        .eq("id", id)
-        .single();
+      const gameData = await gameAPI.getById(gameId);
+      setGame(gameData);
 
-      if (gameError) {
-        console.error("게임 정보 조회 오류:", gameError);
-        Alert.alert("오류", "게임 정보를 불러오는 중 오류가 발생했습니다.");
-        return;
-      }
+      if (!gameData) return;
 
-      const gameWithDetails: GameWithDetails = {
-        ...gameData,
-        meeting_date: gameData.meeting?.meeting_date,
-      };
+      // 2. 게임 팀 가져오기
+      const teamsData = await gameAPI.getTeams(gameId);
 
-      // 2. 게임 팀 정보 가져오기
-      const { data: teamsData, error: teamsError } = await supabase
-        .from("game_team")
-        .select("*")
-        .eq("game_id", id);
+      // 팀에 색상 할당 (없을 경우)
+      const teamColors = ["#4C6EF5", "#F03E3E", "#37B24D", "#F76707"];
+      const teamsWithColors = teamsData.map((team, index) => {
+        // 팀 색상이 없으면 기본 색상 할당
+        if (!team.team_color) {
+          team.team_color = teamColors[index % teamColors.length];
+        }
+        return team;
+      });
 
-      if (teamsError) {
-        console.error("팀 정보 조회 오류:", teamsError);
-      } else {
-        gameWithDetails.teams = teamsData;
+      setTeams(teamsWithColors);
 
-        // 3. 각 팀별 플레이어 정보 가져오기
-        for (const team of gameWithDetails.teams) {
-          const { data: teamPlayersData, error: teamPlayersError } =
-            await supabase
-              .from("game_team_member")
-              .select(
-                `
-              player_id,
-              player:player_id (id, name, contact)
+      // 3. 각 팀의 멤버 가져오기
+      const membersData: Record<string, Player[]> = {};
+      for (const team of teamsWithColors) {
+        const { data, error } = await supabase
+          .from("game_team_member")
+          .select(
             `
-              )
-              .eq("game_team_id", team.id);
+            player:player_id(id, name, contact)
+          `
+          )
+          .eq("game_team_id", team.id);
 
-          if (teamPlayersError) {
-            console.error(
-              `팀 ${team.id} 플레이어 정보 조회 오류:`,
-              teamPlayersError
-            );
-          } else {
-            team.players = teamPlayersData.map((item) => ({
-              id: item.player.id,
-              name: item.player.name,
-              contact: item.player.contact,
-            }));
+        if (!error && data) {
+          membersData[team.id] = data.map((item: any) => item.player);
+        }
+      }
+      setTeamMembers(membersData);
+
+      // 4. 게임 세트 가져오기
+      const setsData = await gameAPI.getSets(gameId);
+      setGameSets(setsData);
+
+      // 5. 현재 세트의 점수 가져오기
+      if (setsData.length > 0) {
+        const currentSet = setsData[currentSetIndex];
+        const { data: scoreData, error: scoreError } = await supabase
+          .from("game_set_score")
+          .select("*")
+          .eq("game_set_id", currentSet.id);
+
+        if (!scoreError && scoreData) {
+          const scoreMap: Record<string, number> = {};
+          scoreData.forEach((score) => {
+            scoreMap[score.game_team_id] = score.score;
+          });
+          setScores(scoreMap);
+
+          // 듀스 상태 확인
+          if (gameData.use_deuce) {
+            checkDeuceStatus(scoreMap, gameData.winning_score);
           }
         }
       }
 
-      // 4. 게임 세트 정보 가져오기
-      const { data: setsData, error: setsError } = await supabase
-        .from("game_set")
+      // 6. 득점 로그 가져오기
+      const { data: logData, error: logError } = await supabase
+        .from("score_log")
         .select("*")
-        .eq("game_id", id)
-        .order("set_number");
+        .eq("game_id", gameId)
+        .order("event_timestamp", { ascending: false });
 
-      if (setsError) {
-        console.error("세트 정보 조회 오류:", setsError);
-      } else {
-        gameWithDetails.sets = setsData;
-
-        // 첫 번째 세트를 활성 세트로 설정 (있을 경우)
-        if (setsData.length > 0) {
-          setActiveSetId(setsData[0].id);
-        }
-
-        // 5. 각 세트별 점수 정보 가져오기
-        const newScores: Record<string, Record<string, number>> = {};
-
-        for (const set of setsData) {
-          const { data: scoresData, error: scoresError } = await supabase
-            .from("game_set_score")
-            .select("*")
-            .eq("game_set_id", set.id);
-
-          if (scoresError) {
-            console.error(`세트 ${set.id} 점수 정보 조회 오류:`, scoresError);
-          } else {
-            newScores[set.id] = {};
-            for (const score of scoresData) {
-              newScores[set.id][score.game_team_id] = score.score;
-            }
-          }
-        }
-
-        setScores(newScores);
+      if (!logError && logData) {
+        setScoreLogs(logData);
       }
 
-      setGame(gameWithDetails);
+      // 7. 세트 승자 정보 가져오기
+      const { data: winnersData, error: winnersError } = await supabase
+        .from("game_set_winner")
+        .select("*")
+        .eq("game_id", gameId);
+
+      if (!winnersError && winnersData) {
+        // 세트 ID를 키로, 승리 팀 ID를 값으로 하는 객체 생성
+        const winners: Record<string, string> = {};
+        winnersData.forEach((winner) => {
+          winners[winner.game_set_id] = winner.game_team_id;
+        });
+        setSetWinners(winners);
+      }
     } catch (error) {
-      console.error("게임 상세 조회 중 오류 발생:", error);
+      console.error("게임 정보 조회 중 오류 발생:", error);
       Alert.alert("오류", "게임 정보를 불러오는 중 오류가 발생했습니다.");
     } finally {
       setLoading(false);
     }
-  }
+  }, [gameId, currentSetIndex]);
 
-  async function handleScoreChange(teamId: string, increment: number) {
-    if (!activeSetId || !game) return;
+  useEffect(() => {
+    fetchGameDetails();
+  }, [fetchGameDetails]);
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
     try {
-      // 현재 점수 가져오기
-      const currentScore = scores[activeSetId]?.[teamId] || 0;
-      const newScore = currentScore + increment;
+      await fetchGameDetails();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [fetchGameDetails]);
 
-      // 음수 점수 방지
-      if (newScore < 0) return;
+  // 듀스 상태 확인 함수
+  const checkDeuceStatus = (
+    scoreMap: Record<string, number>,
+    winningScore: number
+  ) => {
+    if (!game?.use_deuce) return false;
 
-      // 1. 임시로 로컬 상태 업데이트
-      setScores((prev) => ({
-        ...prev,
-        [activeSetId]: {
-          ...prev[activeSetId],
-          [teamId]: newScore,
-        },
-      }));
+    const scoreValues = Object.values(scoreMap);
+    if (scoreValues.length < 2) return false;
 
-      // 2. DB에 점수 업데이트
-      const { data: existingScore, error: checkError } = await supabase
-        .from("game_set_score")
-        .select("*")
-        .eq("game_set_id", activeSetId)
-        .eq("game_team_id", teamId);
+    // 듀스 상태인지 확인 (두 팀 모두 승리점수 - 1에 도달)
+    const deuceThreshold = winningScore - 1;
+    const teamsAtDeuceThreshold = scoreValues.filter(
+      (score) => score >= deuceThreshold
+    );
 
-      if (checkError) {
-        console.error("점수 확인 오류:", checkError);
+    const isDeuce = teamsAtDeuceThreshold.length >= 2;
+    setIsDeuceActive(isDeuce);
+    return isDeuce;
+  };
+
+  // 세트 승리 조건 확인 함수
+  const isSetWinner = (
+    teamId: string,
+    scoreMap: Record<string, number>,
+    targetScore: number
+  ) => {
+    if (!game?.use_deuce) {
+      // 듀스 없는 경우: 목표 점수 달성 시 승리
+      return scoreMap[teamId] >= targetScore;
+    }
+
+    // 듀스 있는 경우
+    const teamScore = scoreMap[teamId];
+
+    // 아직 듀스 상태가 아닌 경우: 일반 승리 조건 적용
+    if (!isDeuceActive) {
+      return teamScore >= targetScore;
+    }
+
+    // 듀스 상태인 경우: 상대팀보다 2점 이상 앞서고 최소 타겟 점수 이상이어야 함
+    const otherTeamScores = Object.entries(scoreMap)
+      .filter(([id, _]) => id !== teamId)
+      .map(([_, score]) => score);
+
+    const highestOtherScore = Math.max(...otherTeamScores);
+    return teamScore >= targetScore && teamScore - highestOtherScore >= 2;
+  };
+
+  // 점수 증가 함수
+  const incrementScore = async (teamId: string) => {
+    try {
+      // 이미 세트가 종료되었는지 확인
+      if (isSetCompleted()) {
+        Alert.alert(
+          "세트 종료",
+          "이 세트는 이미 종료되었습니다. 다음 세트로 넘어가주세요."
+        );
         return;
       }
 
-      if (existingScore && existingScore.length > 0) {
-        // 기존 점수 업데이트
+      // 현재 점수 가져오기
+      const currentScore = scores[teamId] || 0;
+      const newScore = currentScore + 1;
+
+      // 상태 즉시 업데이트 (UI 반응성)
+      const newScores = {
+        ...scores,
+        [teamId]: newScore,
+      };
+      setScores(newScores);
+
+      // 현재 세트
+      const currentSet = gameSets[currentSetIndex];
+
+      // 점수 기록 조회 (이미 있는지 확인)
+      const { data: existingScores, error: fetchError } = await supabase
+        .from("game_set_score")
+        .select("*")
+        .eq("game_set_id", currentSet.id)
+        .eq("game_team_id", teamId);
+
+      if (fetchError) {
+        console.error("점수 조회 중 오류:", fetchError);
+        return;
+      }
+
+      // 점수 업데이트 또는 생성
+      if (existingScores && existingScores.length > 0) {
+        // 이미 있는 점수 업데이트
         const { error } = await supabase
           .from("game_set_score")
           .update({ score: newScore })
-          .eq("game_set_id", activeSetId)
-          .eq("game_team_id", teamId);
+          .eq("id", existingScores[0].id);
 
         if (error) {
-          console.error("점수 업데이트 오류:", error);
-          Alert.alert("오류", "점수 업데이트 중 오류가 발생했습니다.");
+          console.error("점수 업데이트 중 오류:", error);
+          return;
         }
       } else {
-        // 새 점수 생성
+        // 새 점수 기록 생성
         const { error } = await supabase.from("game_set_score").insert([
           {
-            game_set_id: activeSetId,
+            game_set_id: currentSet.id,
             game_team_id: teamId,
             score: newScore,
           },
         ]);
 
         if (error) {
-          console.error("점수 생성 오류:", error);
-          Alert.alert("오류", "점수 등록 중 오류가 발생했습니다.");
+          console.error("점수 기록 중 오류:", error);
+          return;
         }
       }
 
-      // 3. 점수 로그 기록
-      await supabase.from("score_log").insert([
+      // 득점 로그 기록
+      const { data: logData, error: logError } = await supabase
+        .from("score_log")
+        .insert([
+          {
+            game_id: gameId,
+            game_team_id: teamId,
+            game_set_id: currentSet.id,
+            event_details: `세트 ${
+              currentSetIndex + 1
+            }: 득점 (+1): ${newScore}점`,
+          },
+        ])
+        .select();
+
+      if (logError) {
+        console.error("득점 로그 기록 중 오류:", logError);
+      } else if (logData) {
+        // 로그 상태 업데이트
+        setScoreLogs([logData[0], ...scoreLogs]);
+      }
+
+      // 듀스 상태 확인
+      if (game?.use_deuce) {
+        checkDeuceStatus(newScores, currentSet.target_score);
+      }
+
+      // 세트 승리 확인
+      if (isSetWinner(teamId, newScores, currentSet.target_score)) {
+        const team = teams.find((t) => t.id === teamId);
+        const setNumber = currentSetIndex + 1;
+
+        // 세트 승리 기록
+        const { error: setWinnerError } = await supabase
+          .from("game_set_winner")
+          .insert([
+            {
+              game_id: gameId,
+              game_set_id: currentSet.id,
+              game_team_id: teamId,
+            },
+          ]);
+
+        if (setWinnerError) {
+          console.error("세트 승리 기록 중 오류:", setWinnerError);
+        }
+
+        Alert.alert(
+          "세트 종료",
+          `${team?.team_name || "팀"}이(가) ${setNumber}세트를 승리했습니다!`,
+          [
+            {
+              text: "다음 세트로",
+              onPress: () => {
+                if (currentSetIndex < gameSets.length - 1) {
+                  setCurrentSetIndex((prev) => prev + 1);
+                  setScores({});
+                  setIsDeuceActive(false);
+                } else {
+                  Alert.alert("게임 종료", "모든 세트가 종료되었습니다.");
+                }
+              },
+            },
+          ]
+        );
+
+        // 최종 승리 확인
+        checkForGameWinner(teamId);
+      }
+    } catch (error) {
+      console.error("점수 증가 중 오류 발생:", error);
+      Alert.alert("오류", "점수 기록 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 승리한 팀이 최종 승리 조건을 충족하는지 확인
+  const checkForGameWinner = async (teamId: string) => {
+    if (!game || !game.wins_required) return;
+
+    // 현재 팀의 세트 승리 수 계산
+    const { data, error } = await supabase
+      .from("game_set_winner")
+      .select("*")
+      .eq("game_id", gameId)
+      .eq("game_team_id", teamId);
+
+    if (error) {
+      console.error("세트 승리 기록 조회 중 오류:", error);
+      return;
+    }
+
+    const setsWon = (data?.length || 0) + 1; // 방금 승리한 세트 포함
+
+    if (setsWon >= game.wins_required) {
+      const team = teams.find((t) => t.id === teamId);
+
+      // 최종 승리 기록
+      const { error: winnerError } = await supabase.from("game_winner").insert([
         {
-          game_id: game.id,
+          game_id: gameId,
           game_team_id: teamId,
-          event_details: `점수 ${increment > 0 ? "획득" : "감소"}: ${Math.abs(
-            increment
-          )}`,
         },
       ]);
-    } catch (error) {
-      console.error("점수 업데이트 중 오류 발생:", error);
-      Alert.alert("오류", "점수 처리 중 오류가 발생했습니다.");
+
+      if (winnerError) {
+        console.error("최종 승자 기록 중 오류:", winnerError);
+      }
+
+      Alert.alert(
+        "게임 종료",
+        `${team?.team_name || "팀"}이(가) ${
+          game.wins_required
+        }세트를 이겨 최종 승리했습니다!`,
+        [{ text: "확인" }]
+      );
     }
-  }
+  };
 
-  if (loading) {
-    return <Loading message="게임 정보를 불러오는 중..." />;
-  }
+  // 점수 감소 함수 (무르기)
+  const decrementScore = async (teamId: string) => {
+    try {
+      // 현재 점수 가져오기
+      const currentScore = scores[teamId] || 0;
 
-  if (!game) {
+      if (currentScore <= 0) {
+        return; // 점수가 이미 0이면 무시
+      }
+
+      const newScore = currentScore - 1;
+
+      // 상태 즉시 업데이트 (UI 반응성)
+      const newScores = {
+        ...scores,
+        [teamId]: newScore,
+      };
+      setScores(newScores);
+
+      // 현재 세트
+      const currentSet = gameSets[currentSetIndex];
+
+      // 점수 기록 조회
+      const { data: existingScores, error: fetchError } = await supabase
+        .from("game_set_score")
+        .select("*")
+        .eq("game_set_id", currentSet.id)
+        .eq("game_team_id", teamId);
+
+      if (fetchError) {
+        console.error("점수 조회 중 오류:", fetchError);
+        return;
+      }
+
+      if (existingScores && existingScores.length > 0) {
+        // 점수 업데이트
+        const { error } = await supabase
+          .from("game_set_score")
+          .update({ score: newScore })
+          .eq("id", existingScores[0].id);
+
+        if (error) {
+          console.error("점수 업데이트 중 오류:", error);
+          return;
+        }
+      }
+
+      // 무르기 로그 기록
+      const { data: logData, error: logError } = await supabase
+        .from("score_log")
+        .insert([
+          {
+            game_id: gameId,
+            game_team_id: teamId,
+            game_set_id: currentSet.id,
+            event_details: `세트 ${
+              currentSetIndex + 1
+            }: 무르기 (-1): ${newScore}점`,
+          },
+        ])
+        .select();
+
+      if (logError) {
+        console.error("무르기 로그 기록 중 오류:", logError);
+      } else if (logData) {
+        // 로그 상태 업데이트
+        setScoreLogs([logData[0], ...scoreLogs]);
+      }
+
+      // 듀스 상태 확인
+      if (game?.use_deuce) {
+        checkDeuceStatus(newScores, currentSet.target_score);
+      }
+    } catch (error) {
+      console.error("무르기 중 오류 발생:", error);
+      Alert.alert("오류", "점수 변경 중 오류가 발생했습니다.");
+    }
+  };
+
+  // 세트 변경 함수
+  const changeSet = (index: number) => {
+    if (index < 0 || index >= gameSets.length) return;
+
+    if (isSetCompleted() || index < currentSetIndex || confirm(index)) {
+      setCurrentSetIndex(index);
+      setScores({});
+      setIsDeuceActive(false);
+      fetchGameDetails();
+    } else {
+      Alert.alert(
+        "세트 변경",
+        "현재 세트가 완료되지 않았습니다. 변경하시겠습니까?",
+        [
+          { text: "취소", style: "cancel" },
+          {
+            text: "변경",
+            onPress: () => {
+              setCurrentSetIndex(index);
+              setScores({});
+              setIsDeuceActive(false);
+              fetchGameDetails();
+            },
+          },
+        ]
+      );
+    }
+  };
+
+  // 현재 세트가 완료되었는지 확인
+  const isSetCompleted = () => {
+    if (!game || !gameSets[currentSetIndex]) return false;
+
+    const targetScore = gameSets[currentSetIndex].target_score;
+    const teamScores = Object.entries(scores);
+
+    for (const [teamId, score] of teamScores) {
+      if (isSetWinner(teamId, scores, targetScore)) {
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  // 사용자에게 세트 변경 확인
+  const confirm = (index: number) => {
+    if (index === currentSetIndex) return true;
+
+    // 미완료된 세트에서 다른 세트로 이동하려는 경우에만 확인
+    return !Object.values(scores).some((score) => score > 0);
+  };
+
+  if (loading && !refreshing) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>게임 정보를 찾을 수 없습니다.</Text>
+      <View style={styles.loadingContainer}>
+        <Text>불러오는 중...</Text>
       </View>
     );
   }
 
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "독립 게임";
-    return new Date(dateString).toLocaleDateString("ko-KR");
-  };
-
-  const activeSet = game.sets?.find((set) => set.id === activeSetId);
+  if (!game || teams.length === 0) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text>게임 정보를 찾을 수 없습니다.</Text>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <Text style={styles.backButtonText}>뒤로 가기</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
-    <ScrollView style={styles.container}>
-      <Card>
-        <Text style={styles.title}>게임 정보</Text>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>날짜:</Text>
-          <Text style={styles.infoValue}>{formatDate(game.meeting_date)}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>세트:</Text>
-          <Text style={styles.infoValue}>{game.num_of_sets}세트</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>승리 점수:</Text>
-          <Text style={styles.infoValue}>{game.winning_score}점</Text>
-        </View>
-        {game.penalty_details && (
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>내기/벌칙:</Text>
-            <Text style={styles.infoValue}>{game.penalty_details}</Text>
-          </View>
-        )}
-      </Card>
-
-      {game.teams && game.teams.length > 0 && (
-        <Card>
-          <Text style={styles.title}>팀 구성</Text>
-          {game.teams.map((team) => (
-            <View key={team.id} style={styles.teamSection}>
-              <Text style={styles.teamName}>
-                {team.team_name || "이름 없는 팀"}
-              </Text>
-              <View style={styles.playersList}>
-                {team.players && team.players.length > 0 ? (
-                  team.players.map((player) => (
-                    <View key={player.id} style={styles.playerItem}>
-                      <Text style={styles.playerName}>{player.name}</Text>
-                    </View>
-                  ))
-                ) : (
-                  <Text style={styles.emptyText}>
-                    등록된 플레이어가 없습니다.
-                  </Text>
-                )}
-              </View>
-            </View>
-          ))}
-        </Card>
-      )}
-
-      {game.sets && game.sets.length > 0 && (
-        <Card>
-          <Text style={styles.title}>세트</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.setsList}
+    <View style={styles.container}>
+      <ScrollView
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
           >
-            {game.sets.map((set) => (
-              <TouchableOpacity
-                key={set.id}
-                style={[
-                  styles.setItem,
-                  activeSetId === set.id && styles.activeSetItem,
-                ]}
-                onPress={() => setActiveSetId(set.id)}
-              >
-                <Text
+            <FontAwesome name="arrow-left" size={18} color="#007bff" />
+            <Text style={styles.backButtonText}>뒤로</Text>
+          </TouchableOpacity>
+          <Text style={styles.title}>게임 진행</Text>
+        </View>
+
+        {/* 게임 정보 */}
+        <View style={styles.gameInfoContainer}>
+          <View style={styles.gameInfoRow}>
+            <Text style={styles.gameInfoLabel}>세트</Text>
+            <View style={styles.setSelector}>
+              {gameSets.map((set, index) => (
+                <TouchableOpacity
+                  key={set.id}
                   style={[
-                    styles.setText,
-                    activeSetId === set.id && styles.activeSetText,
+                    styles.setButton,
+                    currentSetIndex === index && styles.activeSetButton,
                   ]}
+                  onPress={() => changeSet(index)}
                 >
-                  {set.set_number}세트
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          {activeSet && game.teams && (
-            <View style={styles.scoreSection}>
-              <Text style={styles.scoreTitle}>
-                {activeSet.set_number}세트 점수 (목표: {activeSet.target_score}
-                점)
-              </Text>
-
-              {game.teams.map((team) => {
-                const teamScore = scores[activeSetId!]?.[team.id] || 0;
-                return (
-                  <View key={team.id} style={styles.scoreRow}>
-                    <Text style={styles.scoreTeamName}>
-                      {team.team_name || "이름 없는 팀"}
-                    </Text>
-                    <View style={styles.scoreControls}>
-                      <TouchableOpacity
-                        style={styles.scoreButton}
-                        onPress={() => handleScoreChange(team.id, -1)}
-                      >
-                        <Text style={styles.scoreButtonText}>-</Text>
-                      </TouchableOpacity>
-                      <Text style={styles.scoreValue}>{teamScore}</Text>
-                      <TouchableOpacity
-                        style={styles.scoreButton}
-                        onPress={() => handleScoreChange(team.id, 1)}
-                      >
-                        <Text style={styles.scoreButtonText}>+</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                );
-              })}
+                  <Text
+                    style={[
+                      styles.setText,
+                      currentSetIndex === index && styles.activeSetText,
+                    ]}
+                  >
+                    {index + 1}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+          <View style={styles.gameInfoRow}>
+            <Text style={styles.gameInfoLabel}>방식</Text>
+            <Text style={styles.gameInfoValue}>
+              {game && game.wins_required
+                ? `${game.num_of_sets}판 ${game.wins_required}선승제`
+                : `${game?.num_of_sets || "-"}세트`}
+              {game?.use_deuce ? ", 듀스 사용" : ""}
+            </Text>
+          </View>
+          <View style={styles.gameInfoRow}>
+            <Text style={styles.gameInfoLabel}>목표</Text>
+            <Text style={styles.gameInfoValue}>
+              {gameSets[currentSetIndex]?.target_score ||
+                game?.winning_score ||
+                "-"}
+              점{isDeuceActive && <Text style={styles.deuceTag}> (듀스)</Text>}
+            </Text>
+          </View>
+          {game?.penalty_details && (
+            <View style={styles.gameInfoRow}>
+              <Text style={styles.gameInfoLabel}>벌칙</Text>
+              <Text style={styles.gameInfoValue}>{game.penalty_details}</Text>
             </View>
           )}
-        </Card>
-      )}
-    </ScrollView>
+        </View>
+
+        {/* 점수판 */}
+        <View style={styles.scoreboardContainer}>
+          {teams.map((team) => (
+            <ScoreCounter
+              key={team.id}
+              team={team}
+              members={teamMembers[team.id] || []}
+              score={scores[team.id] || 0}
+              onIncrement={incrementScore}
+              onDecrement={decrementScore}
+              isDeuce={isDeuceActive}
+              isWinner={setWinners[gameSets[currentSetIndex]?.id] === team.id}
+            />
+          ))}
+        </View>
+
+        {/* 득점 로그 */}
+        <ScoreLogComponent
+          logs={scoreLogs}
+          teams={teams}
+          gameSets={gameSets}
+          currentSetId={gameSets[currentSetIndex]?.id}
+          isRefreshing={refreshing}
+          onRefresh={onRefresh}
+        />
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
     backgroundColor: "#f8f9fa",
   },
-  errorText: {
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#dee2e6",
+    backgroundColor: "white",
+  },
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  backButtonText: {
+    color: "#007bff",
     fontSize: 16,
-    color: "#dc3545",
-    textAlign: "center",
-    marginTop: 20,
+    marginLeft: 6,
   },
   title: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
-    marginBottom: 12,
   },
-  infoRow: {
-    flexDirection: "row",
-    marginBottom: 8,
-  },
-  infoLabel: {
-    fontSize: 14,
-    fontWeight: "500",
-    width: 100,
-  },
-  infoValue: {
-    fontSize: 14,
+  loadingContainer: {
     flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  teamSection: {
-    marginBottom: 16,
+  errorContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
   },
-  teamName: {
-    fontSize: 16,
-    fontWeight: "500",
+  gameInfoContainer: {
+    backgroundColor: "white",
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 8,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  gameInfoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 8,
   },
-  playersList: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-  },
-  playerItem: {
-    backgroundColor: "#e9ecef",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    margin: 4,
-  },
-  playerName: {
+  gameInfoLabel: {
     fontSize: 14,
+    fontWeight: "600",
+    color: "#495057",
   },
-  emptyText: {
+  gameInfoValue: {
     fontSize: 14,
-    color: "#6c757d",
-    fontStyle: "italic",
+    color: "#212529",
   },
-  setsList: {
+  setSelector: {
     flexDirection: "row",
-    marginBottom: 16,
   },
-  setItem: {
+  setButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: "#e9ecef",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 4,
-    marginRight: 8,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: 8,
   },
-  activeSetItem: {
+  activeSetButton: {
     backgroundColor: "#007bff",
   },
   setText: {
     fontSize: 14,
+    color: "#495057",
   },
   activeSetText: {
     color: "white",
     fontWeight: "bold",
   },
-  scoreSection: {
-    marginTop: 8,
+  scoreboardContainer: {
+    backgroundColor: "white",
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 8,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
   },
-  scoreTitle: {
-    fontSize: 16,
-    fontWeight: "500",
-    marginBottom: 12,
-  },
-  scoreRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-    backgroundColor: "#f8f9fa",
-    padding: 12,
-    borderRadius: 4,
-  },
-  scoreTeamName: {
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  scoreControls: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  scoreButton: {
-    width: 36,
-    height: 36,
-    backgroundColor: "#007bff",
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 18,
-  },
-  scoreButtonText: {
-    color: "white",
-    fontSize: 20,
+  deuceTag: {
+    color: "#dc3545",
     fontWeight: "bold",
-  },
-  scoreValue: {
-    fontSize: 20,
-    fontWeight: "bold",
-    width: 40,
-    textAlign: "center",
+    marginLeft: 4,
   },
 });

@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "jok9-expo",
-    "slug": "jok9-expo",
+    "name": "ZOC9",
+    "slug": "zoc9",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "zoc9",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
@@ -15,7 +15,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "package": "com.universpace.zoc9"
     },
     "web": {
       "bundler": "metro",
@@ -36,6 +37,15 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "81530772-9674-496f-a9c6-7057edba6588"
+      }
+    },
+    "owner": "universpace"
   }
 }
