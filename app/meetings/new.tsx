@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -7,16 +7,22 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
+  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { supabase } from "../../lib/supabase";
 import { Player, JokguGround } from "../../types";
 import { groundAPI } from "../../lib/api";
+import FontAwesome from "@expo/vector-icons/FontAwesome";
+import CustomDatePicker from "../../components/CustomDatePicker";
+import CustomTimePicker from "../../components/CustomTimePicker";
 
 export default function NewMeetingScreen() {
+  // 날짜/시간 관련 상태
   const [date, setDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+
   const [location, setLocation] = useState("");
   const [locationId, setLocationId] = useState(""); // 선택된 족구장의 ID
   const [loading, setLoading] = useState(false);
@@ -138,36 +144,18 @@ export default function NewMeetingScreen() {
 
       <View style={styles.form}>
         <View style={styles.formGroup}>
-          <Text style={styles.label}>날짜 *</Text>
-          <TextInput
-            style={styles.input}
-            value={date}
-            onChangeText={setDate}
-            placeholder="YYYY-MM-DD"
-            keyboardType="numbers-and-punctuation"
-          />
+          <Text style={styles.label}>날짜 * (YYYY-MM-DD)</Text>
+          <CustomDatePicker value={date} onChange={setDate} />
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>시작 시간 *</Text>
-          <TextInput
-            style={styles.input}
-            value={startTime}
-            onChangeText={setStartTime}
-            placeholder="HH:MM"
-            keyboardType="numbers-and-punctuation"
-          />
+          <Text style={styles.label}>시작 시간 * (HH:MM)</Text>
+          <CustomTimePicker value={startTime} onChange={setStartTime} />
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>종료 시간</Text>
-          <TextInput
-            style={styles.input}
-            value={endTime}
-            onChangeText={setEndTime}
-            placeholder="HH:MM (선택사항)"
-            keyboardType="numbers-and-punctuation"
-          />
+          <Text style={styles.label}>종료 시간 (선택사항)</Text>
+          <CustomTimePicker value={endTime} onChange={setEndTime} />
         </View>
 
         <View style={styles.formGroup}>
@@ -295,12 +283,21 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontWeight: "500",
   },
-  input: {
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 1,
     borderColor: "#ced4da",
     borderRadius: 4,
+    backgroundColor: "white",
+  },
+  input: {
+    flex: 1,
     padding: 12,
     fontSize: 16,
+  },
+  inputIcon: {
+    marginRight: 12,
   },
   groundsList: {
     flexDirection: "row",

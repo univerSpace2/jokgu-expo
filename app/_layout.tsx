@@ -1,10 +1,15 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Slot } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { View } from "react-native";
 import "bootstrap/dist/css/bootstrap.min.css"; // 이 부분은 웹에서만 작동함
+import * as React from "react";
+
+// ThemeProvider를 import하기 전에 필요한 의존성 확인
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { ThemeProvider } from "react-native-rapi-ui";
 
 export {
   // 오류를 방지하기 위해 앱이 로드되기 전에 모든 경로를 지연시킵니다.
@@ -36,16 +41,14 @@ export default function RootLayout() {
   }, [loaded]);
 
   if (!loaded) {
-    return <View />;
+    return null;
   }
 
-  return <RootLayoutNav />;
-}
-
-function RootLayoutNav() {
   return (
-    <Stack>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-    </Stack>
+    <SafeAreaProvider>
+      <ThemeProvider theme="light">
+        <Slot />
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

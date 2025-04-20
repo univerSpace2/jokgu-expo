@@ -10,6 +10,8 @@ import {
 import { useRouter } from "expo-router";
 import { groundAPI } from "../../lib/api";
 import { JokguGround } from "../../types";
+import { eventEmitter, EventTypes } from "../../lib/eventEmitter";
+import { useAppFocus } from "../../lib/utils";
 
 export default function GroundsScreen() {
   const [grounds, setGrounds] = useState<JokguGround[]>([]);
@@ -29,8 +31,21 @@ export default function GroundsScreen() {
     }
   }, []);
 
+  // 앱이 포커스를 얻을 때 데이터를 자동으로 새로고침
+  useAppFocus(fetchGrounds);
+
   useEffect(() => {
     fetchGrounds();
+
+    // 이벤트 구독 설정
+    const unsubscribe = eventEmitter.on(EventTypes.GROUND_CHANGED, () => {
+      fetchGrounds();
+    });
+
+    // 컴포넌트 언마운트 시 구독 해제
+    return () => {
+      unsubscribe();
+    };
   }, [fetchGrounds]);
 
   const onRefresh = useCallback(async () => {

@@ -12,12 +12,18 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { Meeting, Player, Game } from "../../types";
 import { meetingAPI, gameAPI } from "../../lib/api";
+import { eventEmitter, EventTypes } from "../../lib/eventEmitter";
+import { useAppFocus } from "../../lib/utils";
+import { supabase } from "../../lib/supabase";
 
 export default function MeetingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [members, setMembers] = useState<Player[]>([]);
   const [games, setGames] = useState<Game[]>([]);
+  const [gameWinners, setGameWinners] = useState<
+    Record<string, { teamName: string } | null>
+  >({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
@@ -39,6 +45,31 @@ export default function MeetingDetailScreen() {
       // 모임에 속한 게임 가져오기
       const gamesData = await gameAPI.getByMeetingId(id);
       setGames(gamesData);
+
+      // 각 게임의 최종 승리팀 정보 가져오기
+      const winnerResults: Record<string, { teamName: string } | null> = {};
+      await Promise.all(
+        gamesData.map(async (game) => {
+          // 1. game_winner에서 승리팀 id 조회
+          const { data: winnerData } = await supabase
+            .from("game_winner")
+            .select("game_team_id")
+            .eq("game_id", game.id)
+            .single();
+          if (winnerData && winnerData.game_team_id) {
+            // 2. game_team에서 팀명 조회
+            const { data: teamData } = await supabase
+              .from("game_team")
+              .select("team_name")
+              .eq("id", winnerData.game_team_id)
+              .single();
+            winnerResults[game.id] = { teamName: teamData?.team_name || "팀" };
+          } else {
+            winnerResults[game.id] = null;
+          }
+        })
+      );
+      setGameWinners(winnerResults);
     } catch (error) {
       console.error("모임 정보 조회 중 오류 발생:", error);
       Alert.alert("오류", "모임 정보를 불러오는 중 오류가 발생했습니다.");
@@ -47,9 +78,41 @@ export default function MeetingDetailScreen() {
     }
   }, [id]);
 
+  // 앱이 포커스를 얻을 때 데이터를 자동으로 새로고침
+  useAppFocus(fetchMeetingDetails);
+
   useEffect(() => {
     fetchMeetingDetails();
-  }, [fetchMeetingDetails]);
+
+    // 이벤트 구독 설정
+    const unsubscribeMeeting = eventEmitter.on(
+      EventTypes.MEETING_CHANGED,
+      () => {
+        fetchMeetingDetails();
+      }
+    );
+
+    const unsubscribeMembers = eventEmitter.on(
+      EventTypes.MEETING_MEMBERS_CHANGED,
+      (meetingId) => {
+        // 현재 화면의 모임 ID와 같을 때만 새로고침
+        if (meetingId === id) {
+          fetchMeetingDetails();
+        }
+      }
+    );
+
+    const unsubscribeGame = eventEmitter.on(EventTypes.GAME_CHANGED, () => {
+      fetchMeetingDetails();
+    });
+
+    // 컴포넌트 언마운트 시 구독 해제
+    return () => {
+      unsubscribeMeeting();
+      unsubscribeMembers();
+      unsubscribeGame();
+    };
+  }, [fetchMeetingDetails, id]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -72,7 +135,8 @@ export default function MeetingDetailScreen() {
   };
 
   // 시간 포맷 함수
-  const formatTime = (timeString: string) => {
+  const formatTime = (timeString: string | null) => {
+    if (!timeString) return "-"; // null이나 빈 문자열인 경우 "-" 반환
     const [hours, minutes] = timeString.split(":");
     return `${hours}:${minutes}`;
   };
@@ -182,6 +246,42 @@ export default function MeetingDetailScreen() {
                   </Text>
                 </View>
               </View>
+              {/* 최종 승리팀 표시 */}
+              {gameWinners[game.id] ? (
+                <View
+                  style={{
+                    marginTop: 8,
+                    backgroundColor: "#e6ffe6",
+                    borderRadius: 4,
+                    padding: 4,
+                    alignSelf: "flex-start",
+                    borderWidth: 1,
+                    borderColor: "#28a745",
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "#28a745",
+                      fontWeight: "bold",
+                      fontSize: 13,
+                    }}
+                  >
+                    최종 승리팀: {gameWinners[game.id]?.teamName}
+                  </Text>
+                </View>
+              ) : (
+                <View
+                  style={{
+                    marginTop: 8,
+                    backgroundColor: "#f1f3f5",
+                    borderRadius: 4,
+                    padding: 4,
+                    alignSelf: "flex-start",
+                  }}
+                >
+                  <Text style={{ color: "#6c757d", fontSize: 13 }}>진행중</Text>
+                </View>
+              )}
               {game.penalty_details && (
                 <View style={styles.penaltyContainer}>
                   <Text style={styles.penaltyText}>{game.penalty_details}</Text>

@@ -8,6 +8,7 @@ import {
   Player,
   ScoreLog,
 } from "../types";
+import { eventEmitter, EventTypes } from "./eventEmitter";
 import { supabase } from "./supabase";
 
 // Player API
@@ -44,6 +45,10 @@ export const playerAPI = {
       .single();
 
     if (error) throw error;
+
+    // 이벤트 발생
+    eventEmitter.emit(EventTypes.PLAYER_CHANGED);
+
     return data;
   },
 
@@ -60,6 +65,10 @@ export const playerAPI = {
       .single();
 
     if (error) throw error;
+
+    // 이벤트 발생
+    eventEmitter.emit(EventTypes.PLAYER_CHANGED);
+
     return data;
   },
 
@@ -68,6 +77,9 @@ export const playerAPI = {
     const { error } = await supabase.from("player").delete().eq("id", id);
 
     if (error) throw error;
+
+    // 이벤트 발생
+    eventEmitter.emit(EventTypes.PLAYER_CHANGED);
   },
 };
 
@@ -124,6 +136,10 @@ export const meetingAPI = {
       .single();
 
     if (error) throw error;
+
+    // 이벤트 발생
+    eventEmitter.emit(EventTypes.MEETING_CHANGED);
+
     return data;
   },
 
@@ -140,6 +156,10 @@ export const meetingAPI = {
       .single();
 
     if (error) throw error;
+
+    // 이벤트 발생
+    eventEmitter.emit(EventTypes.MEETING_CHANGED);
+
     return data;
   },
 
@@ -148,6 +168,9 @@ export const meetingAPI = {
     const { error } = await supabase.from("meeting").delete().eq("id", id);
 
     if (error) throw error;
+
+    // 이벤트 발생
+    eventEmitter.emit(EventTypes.MEETING_CHANGED);
   },
 
   // 모임 참여자 추가
@@ -157,6 +180,9 @@ export const meetingAPI = {
       .insert([{ meeting_id: meetingId, player_id: playerId }]);
 
     if (error) throw error;
+
+    // 이벤트 발생
+    eventEmitter.emit(EventTypes.MEETING_MEMBERS_CHANGED, meetingId);
   },
 
   // 모임 참여자 삭제
@@ -168,6 +194,9 @@ export const meetingAPI = {
       .eq("player_id", playerId);
 
     if (error) throw error;
+
+    // 이벤트 발생
+    eventEmitter.emit(EventTypes.MEETING_MEMBERS_CHANGED, meetingId);
   },
 };
 
@@ -213,6 +242,13 @@ export const gameAPI = {
       .single();
 
     if (error) throw error;
+
+    // 이벤트 발생
+    eventEmitter.emit(EventTypes.GAME_CHANGED);
+    if (game.meeting_id) {
+      eventEmitter.emit(EventTypes.MEETING_CHANGED);
+    }
+
     return data;
   },
 
@@ -229,6 +265,10 @@ export const gameAPI = {
       .single();
 
     if (error) throw error;
+
+    // 이벤트 발생
+    eventEmitter.emit(EventTypes.GAME_CHANGED);
+
     return data;
   },
 
@@ -237,6 +277,9 @@ export const gameAPI = {
     const { error } = await supabase.from("game").delete().eq("id", id);
 
     if (error) throw error;
+
+    // 이벤트 발생
+    eventEmitter.emit(EventTypes.GAME_CHANGED);
   },
 
   // 게임 팀 생성
@@ -248,6 +291,10 @@ export const gameAPI = {
       .single();
 
     if (error) throw error;
+
+    // 이벤트 발생 - 게임 데이터 변경
+    eventEmitter.emit(EventTypes.GAME_CHANGED);
+
     return data;
   },
 
@@ -331,6 +378,10 @@ export const gameAPI = {
       .single();
 
     if (error) throw error;
+
+    // 이벤트 발생
+    eventEmitter.emit(EventTypes.GAME_CHANGED);
+
     return data;
   },
 };
@@ -369,6 +420,10 @@ export const groundAPI = {
       .single();
 
     if (error) throw error;
+
+    // 이벤트 발생
+    eventEmitter.emit(EventTypes.GROUND_CHANGED);
+
     return data;
   },
 
@@ -385,6 +440,10 @@ export const groundAPI = {
       .single();
 
     if (error) throw error;
+
+    // 이벤트 발생
+    eventEmitter.emit(EventTypes.GROUND_CHANGED);
+
     return data;
   },
 
@@ -393,5 +452,8 @@ export const groundAPI = {
     const { error } = await supabase.from("jokgu_ground").delete().eq("id", id);
 
     if (error) throw error;
+
+    // 이벤트 발생
+    eventEmitter.emit(EventTypes.GROUND_CHANGED);
   },
 };

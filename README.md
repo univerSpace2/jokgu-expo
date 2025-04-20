@@ -15,6 +15,45 @@ jok9-expo: 족구 모임 관리 앱
 - TypeScript
 - Supabase (백엔드)
 
+## 설치 방법 (맥 & 윈도우)
+
+### 1. Node.js 설치 (nvm 권장)
+
+#### MacOS
+
+1. [Homebrew](https://brew.sh/)가 설치되어 있지 않다면 설치:
+   ```bash
+   /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+   ```
+2. nvm 설치:
+   ```bash
+   brew install nvm
+   mkdir ~/.nvm
+   echo 'export NVM_DIR="$HOME/.nvm"' >> ~/.zshrc
+   echo '[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && . "/opt/homebrew/opt/nvm/nvm.sh"' >> ~/.zshrc
+   source ~/.zshrc
+   ```
+3. Node.js 설치 및 사용:
+   ```bash
+   nvm install --lts
+   nvm use --lts
+   ```
+
+#### Windows
+
+1. [nvm-windows](https://github.com/coreybutler/nvm-windows/releases) 설치 파일 다운로드 및 설치
+2. 명령 프롬프트(또는 PowerShell)에서 Node.js 설치 및 사용:
+   ```cmd
+   nvm install lts
+   nvm use lts
+   ```
+
+### 2. Yarn 설치
+
+```bash
+npm install -g yarn
+```
+
 ## 실행 방법
 
 ```bash

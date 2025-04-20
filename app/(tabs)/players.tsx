@@ -11,6 +11,8 @@ import {
 import { useRouter } from "expo-router";
 import { playerAPI } from "../../lib/api";
 import { Player } from "../../types";
+import { eventEmitter, EventTypes } from "../../lib/eventEmitter";
+import { useAppFocus } from "../../lib/utils";
 
 export default function PlayersScreen() {
   const [players, setPlayers] = useState<Player[]>([]);
@@ -30,8 +32,21 @@ export default function PlayersScreen() {
     }
   }, []);
 
+  // 앱이 포커스를 얻을 때 데이터를 자동으로 새로고침
+  useAppFocus(fetchPlayers);
+
   useEffect(() => {
     fetchPlayers();
+
+    // 이벤트 구독 설정
+    const unsubscribe = eventEmitter.on(EventTypes.PLAYER_CHANGED, () => {
+      fetchPlayers();
+    });
+
+    // 컴포넌트 언마운트 시 구독 해제
+    return () => {
+      unsubscribe();
+    };
   }, [fetchPlayers]);
 
   const onRefresh = useCallback(async () => {
@@ -46,8 +61,8 @@ export default function PlayersScreen() {
   async function deletePlayer(id: string) {
     try {
       await playerAPI.delete(id);
-      // 플레이어 목록에서 삭제된 항목 제거
-      setPlayers(players.filter((player) => player.id !== id));
+      // 이벤트 이미터로 처리되므로 여기서 데이터 수동 업데이트 필요 없음
+      // setPlayers(players.filter((player) => player.id !== id));
     } catch (error) {
       console.error("플레이어 삭제 중 오류 발생:", error);
       Alert.alert("오류", "플레이어 삭제 중 오류가 발생했습니다.");

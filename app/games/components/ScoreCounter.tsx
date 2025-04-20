@@ -11,6 +11,7 @@ interface ScoreCounterProps {
   onDecrement: (teamId: string) => void;
   isDeuce?: boolean;
   isWinner?: boolean;
+  isFinalWinner?: boolean;
 }
 
 export default function ScoreCounter({
@@ -21,6 +22,7 @@ export default function ScoreCounter({
   onDecrement,
   isDeuce = false,
   isWinner = false,
+  isFinalWinner = false,
 }: ScoreCounterProps) {
   // 팀 색상 (없으면 기본 색상 사용)
   const teamColor = team.team_color || "#6c757d";
@@ -37,7 +39,12 @@ export default function ScoreCounter({
           <Text style={[styles.teamName, { color: teamColor }]}>
             {team.team_name || `팀 ${team.id.substring(0, 4)}`}
           </Text>
-          {isWinner && (
+          {isFinalWinner && (
+            <View style={styles.finalWinnerBadge}>
+              <Text style={styles.finalWinnerText}>최종 승리</Text>
+            </View>
+          )}
+          {!isFinalWinner && isWinner && (
             <View style={styles.winnerBadge}>
               <Text style={styles.winnerText}>승리</Text>
             </View>
@@ -162,5 +169,17 @@ const styles = StyleSheet.create({
   },
   winnerScoreControls: {
     backgroundColor: "#28a74510",
+  },
+  finalWinnerBadge: {
+    backgroundColor: "#ffc107",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  finalWinnerText: {
+    fontSize: 12,
+    fontWeight: "bold",
+    color: "#212529",
   },
 });

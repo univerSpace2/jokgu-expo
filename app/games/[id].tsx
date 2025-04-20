@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import {
   StyleSheet,
   View,
@@ -23,6 +23,8 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { gameAPI } from "../../lib/api";
 import ScoreCounter from "./components/ScoreCounter";
 import ScoreLogComponent from "./components/ScoreLog";
+import { eventEmitter, EventTypes } from "../../lib/eventEmitter";
+import { useAppFocus } from "../../lib/utils";
 
 interface GameWithDetails extends Game {
   meeting_date?: string;
@@ -45,6 +47,9 @@ export default function GameDetailScreen() {
   const [scoreLogs, setScoreLogs] = useState<ScoreLogType[]>([]);
   const [isDeuceActive, setIsDeuceActive] = useState(false);
   const [setWinners, setSetWinners] = useState<Record<string, string>>({});
+  const [finalWinnerTeamId, setFinalWinnerTeamId] = useState<string | null>(
+    null
+  );
   const router = useRouter();
 
   const fetchGameDetails = useCallback(async () => {
@@ -143,6 +148,18 @@ export default function GameDetailScreen() {
         });
         setSetWinners(winners);
       }
+
+      // 8. 최종 승리팀 정보 가져오기
+      const { data: finalWinnerData, error: finalWinnerError } = await supabase
+        .from("game_winner")
+        .select("*")
+        .eq("game_id", gameId)
+        .single();
+      if (!finalWinnerError && finalWinnerData) {
+        setFinalWinnerTeamId(finalWinnerData.game_team_id);
+      } else {
+        setFinalWinnerTeamId(null);
+      }
     } catch (error) {
       console.error("게임 정보 조회 중 오류 발생:", error);
       Alert.alert("오류", "게임 정보를 불러오는 중 오류가 발생했습니다.");
@@ -151,8 +168,21 @@ export default function GameDetailScreen() {
     }
   }, [gameId, currentSetIndex]);
 
+  // 앱이 포커스를 얻을 때 데이터를 자동으로 새로고침
+  useAppFocus(fetchGameDetails);
+
   useEffect(() => {
     fetchGameDetails();
+
+    // 이벤트 구독 설정
+    const unsubscribe = eventEmitter.on(EventTypes.GAME_CHANGED, () => {
+      fetchGameDetails();
+    });
+
+    // 컴포넌트 언마운트 시 구독 해제
+    return () => {
+      unsubscribe();
+    };
   }, [fetchGameDetails]);
 
   const onRefresh = useCallback(async () => {
@@ -215,6 +245,13 @@ export default function GameDetailScreen() {
 
   // 점수 증가 함수
   const incrementScore = async (teamId: string) => {
+    if (finalWinnerTeamId) {
+      Alert.alert(
+        "게임 종료",
+        "이미 최종 승리팀이 결정되어 더 이상 점수를 입력할 수 없습니다."
+      );
+      return;
+    }
     try {
       // 이미 세트가 종료되었는지 확인
       if (isSetCompleted()) {
@@ -370,7 +407,7 @@ export default function GameDetailScreen() {
       return;
     }
 
-    const setsWon = (data?.length || 0) + 1; // 방금 승리한 세트 포함
+    const setsWon = data?.length || 0; // 방금 승리한 세트 포함하지 않음
 
     if (setsWon >= game.wins_required) {
       const team = teams.find((t) => t.id === teamId);
@@ -399,6 +436,13 @@ export default function GameDetailScreen() {
 
   // 점수 감소 함수 (무르기)
   const decrementScore = async (teamId: string) => {
+    if (finalWinnerTeamId) {
+      Alert.alert(
+        "게임 종료",
+        "이미 최종 승리팀이 결정되어 점수 변경이 불가능합니다."
+      );
+      return;
+    }
     try {
       // 현재 점수 가져오기
       const currentScore = scores[teamId] || 0;
@@ -478,6 +522,13 @@ export default function GameDetailScreen() {
 
   // 세트 변경 함수
   const changeSet = (index: number) => {
+    if (finalWinnerTeamId) {
+      Alert.alert(
+        "게임 종료",
+        "이미 최종 승리팀이 결정되어 세트 변경이 불가능합니다."
+      );
+      return;
+    }
     if (index < 0 || index >= gameSets.length) return;
 
     if (isSetCompleted() || index < currentSetIndex || confirm(index)) {
@@ -507,6 +558,7 @@ export default function GameDetailScreen() {
 
   // 현재 세트가 완료되었는지 확인
   const isSetCompleted = () => {
+    if (finalWinnerTeamId) return true;
     if (!game || !gameSets[currentSetIndex]) return false;
 
     const targetScore = gameSets[currentSetIndex].target_score;
@@ -568,6 +620,28 @@ export default function GameDetailScreen() {
           </TouchableOpacity>
           <Text style={styles.title}>게임 진행</Text>
         </View>
+
+        {/* 최종 승리팀 안내 */}
+        {finalWinnerTeamId && (
+          <View
+            style={{
+              backgroundColor: "#e6ffe6",
+              padding: 12,
+              margin: 16,
+              borderRadius: 8,
+              alignItems: "center",
+              borderWidth: 1,
+              borderColor: "#28a745",
+            }}
+          >
+            <Text
+              style={{ color: "#28a745", fontWeight: "bold", fontSize: 16 }}
+            >
+              최종 승리팀:{" "}
+              {teams.find((t) => t.id === finalWinnerTeamId)?.team_name || "팀"}
+            </Text>
+          </View>
+        )}
 
         {/* 게임 정보 */}
         <View style={styles.gameInfoContainer}>
@@ -633,6 +707,7 @@ export default function GameDetailScreen() {
               onDecrement={decrementScore}
               isDeuce={isDeuceActive}
               isWinner={setWinners[gameSets[currentSetIndex]?.id] === team.id}
+              isFinalWinner={finalWinnerTeamId === team.id}
             />
           ))}
         </View>
