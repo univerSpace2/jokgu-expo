@@ -1,9 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   ScrollView,
-  StyleSheet,
   View,
-  Text,
   TouchableOpacity,
   RefreshControl,
 } from "react-native";
@@ -12,12 +10,23 @@ import { groundAPI } from "../../lib/api";
 import { JokguGround } from "../../types";
 import { eventEmitter, EventTypes } from "../../lib/eventEmitter";
 import { useAppFocus } from "../../lib/utils";
+import {
+  Layout,
+  Button,
+  Section,
+  Text,
+  TopNav,
+  useTheme,
+  themeColor,
+} from "react-native-rapi-ui";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function GroundsScreen() {
   const [grounds, setGrounds] = useState<JokguGround[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
+  const { theme, isDarkmode } = useTheme();
 
   const fetchGrounds = useCallback(async () => {
     try {
@@ -58,24 +67,62 @@ export default function GroundsScreen() {
   }, [fetchGrounds]);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>경기장 목록</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => router.push("/grounds/new")}
-        >
-          <Text style={styles.addButtonText}>+ 새 경기장</Text>
-        </TouchableOpacity>
-      </View>
+    <Layout>
+      <TopNav
+        middleContent="경기장 목록"
+        middleTextStyle={{
+          fontSize: 24,
+          fontWeight: "bold",
+          color: isDarkmode ? themeColor.white : themeColor.black,
+        }}
+        rightContent={
+          <Button
+            status="primary"
+            size="md"
+            text="새 경기장"
+            onPress={() => router.push("/grounds/new")}
+            style={{
+              paddingHorizontal: 4,
+              minWidth: 80,
+              borderRadius: 8,
+              marginRight: 5,
+            }}
+          />
+        }
+        leftContent={
+          <Ionicons
+            name="refresh-outline"
+            size={20}
+            color={isDarkmode ? themeColor.white : themeColor.black}
+            onPress={onRefresh}
+          />
+        }
+        backgroundColor={isDarkmode ? themeColor.dark : themeColor.white}
+        borderColor={isDarkmode ? themeColor.dark200 : themeColor.gray200}
+      />
 
       {loading && !refreshing ? (
-        <View style={styles.loadingContainer}>
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: isDarkmode
+              ? themeColor.dark100
+              : themeColor.gray100,
+          }}
+        >
           <Text>불러오는 중...</Text>
         </View>
       ) : (
         <ScrollView
-          style={styles.list}
+          style={{
+            flex: 1,
+            backgroundColor: isDarkmode
+              ? themeColor.dark100
+              : themeColor.gray100,
+            padding: 16,
+          }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
@@ -84,134 +131,150 @@ export default function GroundsScreen() {
             grounds.map((ground) => (
               <TouchableOpacity
                 key={ground.id}
-                style={styles.groundCard}
                 onPress={() => router.push(`/grounds/${ground.id}` as any)}
+                style={{ marginBottom: 16 }}
+                activeOpacity={0.7}
               >
-                <View style={styles.groundInfo}>
-                  <Text style={styles.groundName}>{ground.name}</Text>
-                  <Text style={styles.groundLocation}>{ground.location}</Text>
-                </View>
-                <View style={styles.groundDetails}>
+                <Section
+                  style={{
+                    backgroundColor: isDarkmode
+                      ? themeColor.dark
+                      : themeColor.white,
+                    padding: 16,
+                    borderRadius: 16,
+                    shadowColor: isDarkmode ? "#000" : "#888",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: isDarkmode ? 0.2 : 0.08,
+                    shadowRadius: 8,
+                    elevation: 3,
+                    borderWidth: 1,
+                    borderColor: isDarkmode
+                      ? themeColor.dark200
+                      : themeColor.gray200,
+                  }}
+                >
                   <View
-                    style={[
-                      styles.reservationBadge,
-                      ground.reservation_required
-                        ? styles.requiredBadge
-                        : styles.notRequiredBadge,
-                    ]}
+                    style={{
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: 8,
+                    }}
                   >
-                    <Text style={styles.badgeText}>
-                      {ground.reservation_required ? "예약필수" : "예약불필요"}
+                    <Text
+                      fontWeight="bold"
+                      size="h3"
+                      style={{
+                        color: isDarkmode ? themeColor.white : themeColor.black,
+                      }}
+                    >
+                      {ground.name}
+                    </Text>
+                    <View
+                      style={{
+                        backgroundColor: ground.reservation_required
+                          ? isDarkmode
+                            ? "rgba(244, 63, 94, 0.2)"
+                            : "rgba(244, 63, 94, 0.1)"
+                          : isDarkmode
+                          ? "rgba(34, 197, 94, 0.2)"
+                          : "rgba(34, 197, 94, 0.1)",
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 16,
+                      }}
+                    >
+                      <Text
+                        size="sm"
+                        style={{
+                          color: ground.reservation_required
+                            ? "#f43f5e"
+                            : "#22c55e",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {ground.reservation_required
+                          ? "예약필수"
+                          : "예약불필요"}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                    }}
+                  >
+                    <Ionicons
+                      name="location-outline"
+                      size={16}
+                      color={
+                        isDarkmode ? themeColor.gray400 : themeColor.gray500
+                      }
+                      style={{ marginRight: 4 }}
+                    />
+                    <Text
+                      size="md"
+                      style={{
+                        color: isDarkmode
+                          ? themeColor.gray400
+                          : themeColor.gray500,
+                      }}
+                    >
+                      {ground.location}
                     </Text>
                   </View>
-                </View>
+                </Section>
               </TouchableOpacity>
             ))
           ) : (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>등록된 경기장이 없습니다.</Text>
-              <Text style={styles.emptySubText}>새 경기장을 추가해보세요!</Text>
+            <View
+              style={{
+                flex: 1,
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 40,
+                marginTop: 50,
+              }}
+            >
+              <Ionicons
+                name="map-outline"
+                size={60}
+                color={isDarkmode ? themeColor.dark200 : themeColor.gray}
+                style={{ marginBottom: 16, opacity: 0.6 }}
+              />
+              <Text
+                size="lg"
+                fontWeight="bold"
+                style={{
+                  marginBottom: 8,
+                  color: isDarkmode ? themeColor.white : themeColor.black,
+                }}
+              >
+                등록된 경기장이 없습니다.
+              </Text>
+              <Text
+                size="md"
+                style={{
+                  color: isDarkmode ? themeColor.gray400 : themeColor.gray500,
+                  textAlign: "center",
+                  marginBottom: 20,
+                }}
+              >
+                새로운 경기장을 추가해보세요!
+              </Text>
+              <Button
+                text="+ 새 경기장 추가"
+                onPress={() => router.push("/grounds/new")}
+                status="primary"
+                size="lg"
+                style={{ borderRadius: 12 }}
+              />
             </View>
           )}
         </ScrollView>
       )}
-    </View>
+    </Layout>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: "#f8f9fa",
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-  },
-  addButton: {
-    backgroundColor: "#007bff",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 4,
-  },
-  addButtonText: {
-    color: "white",
-    fontWeight: "bold",
-  },
-  list: {
-    flex: 1,
-  },
-  groundCard: {
-    backgroundColor: "white",
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  groundInfo: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  groundName: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  groundLocation: {
-    fontSize: 14,
-    marginBottom: 8,
-  },
-  groundDetails: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  reservationBadge: {
-    backgroundColor: "#17a2b8",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  requiredBadge: {
-    backgroundColor: "#dc3545",
-  },
-  notRequiredBadge: {
-    backgroundColor: "#28a745",
-  },
-  badgeText: {
-    color: "white",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 40,
-  },
-  emptyText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  emptySubText: {
-    fontSize: 14,
-    color: "#666",
-  },
-});

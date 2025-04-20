@@ -2,6 +2,7 @@ export interface Player {
   id: string;
   name: string;
   contact?: string;
+  bank_account?: string;
 }
 
 export interface Meeting {
@@ -37,6 +38,7 @@ export interface GameTeam {
 export interface GameTeamMember {
   game_team_id: string;
   player_id: string;
+  f_position?: string;
 }
 
 export interface GameSet {
@@ -62,6 +64,18 @@ export interface ScoreLog {
   event_details?: string;
 }
 
+export interface Position {
+  id: string;
+  created_at: string;
+  position_name: string;
+}
+
+export interface JokguGroundType {
+  id: string;
+  created_at: string;
+  type_name: string;
+}
+
 export interface JokguGround {
   id: string;
   name: string;
@@ -69,4 +83,7 @@ export interface JokguGround {
   reservation_required: boolean;
   reservation_method?: string;
   price_info?: string;
+  f_jokgu_ground_type?: string;
+  reservation_link?: string;
+  is_indoor?: boolean;
 }

@@ -2,8 +2,8 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useFonts } from "expo-font";
 import { Slot } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
-import { View } from "react-native";
+import { useEffect, useState } from "react";
+import { View, useColorScheme } from "react-native";
 import "bootstrap/dist/css/bootstrap.min.css"; // 이 부분은 웹에서만 작동함
 import * as React from "react";
 
@@ -24,6 +24,16 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const colorScheme = useColorScheme();
+  const [theme, setTheme] = useState<"light" | "dark">(
+    colorScheme === "dark" ? "dark" : "light"
+  );
+
+  // 시스템 테마 변경 감지
+  useEffect(() => {
+    setTheme(colorScheme === "dark" ? "dark" : "light");
+  }, [colorScheme]);
+
   const [loaded, error] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
     ...FontAwesome.font,
@@ -46,7 +56,32 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <ThemeProvider theme="light">
+      <ThemeProvider
+        theme={theme}
+        // 커스텀 테마 설정
+        customTheme={{
+          light: {
+            primary: "#6366f1",
+            secondary: "#8b5cf6",
+            accent: "#f43f5e",
+            background: "#f8fafc",
+            card: "#ffffff",
+            text: "#1e293b",
+            textSecondary: "#64748b",
+            border: "#e2e8f0",
+          },
+          dark: {
+            primary: "#818cf8",
+            secondary: "#a78bfa",
+            accent: "#fb7185",
+            background: "#0f172a",
+            card: "#1e293b",
+            text: "#f1f5f9",
+            textSecondary: "#94a3b8",
+            border: "#334155",
+          },
+        }}
+      >
         <Slot />
       </ThemeProvider>
     </SafeAreaProvider>

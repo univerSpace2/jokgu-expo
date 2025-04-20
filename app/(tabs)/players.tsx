@@ -1,24 +1,33 @@
 import { useEffect, useState, useCallback } from "react";
 import {
   ScrollView,
-  StyleSheet,
   View,
-  Text,
-  TouchableOpacity,
   Alert,
   RefreshControl,
+  TouchableOpacity,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { playerAPI } from "../../lib/api";
 import { Player } from "../../types";
 import { eventEmitter, EventTypes } from "../../lib/eventEmitter";
 import { useAppFocus } from "../../lib/utils";
+import {
+  Layout,
+  Button,
+  Section,
+  Text,
+  TopNav,
+  useTheme,
+  themeColor,
+} from "react-native-rapi-ui";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function PlayersScreen() {
   const [players, setPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
+  const { theme, isDarkmode } = useTheme();
 
   const fetchPlayers = useCallback(async () => {
     try {
@@ -62,7 +71,6 @@ export default function PlayersScreen() {
     try {
       await playerAPI.delete(id);
       // 이벤트 이미터로 처리되므로 여기서 데이터 수동 업데이트 필요 없음
-      // setPlayers(players.filter((player) => player.id !== id));
     } catch (error) {
       console.error("플레이어 삭제 중 오류 발생:", error);
       Alert.alert("오류", "플레이어 삭제 중 오류가 발생했습니다.");
@@ -89,163 +97,261 @@ export default function PlayersScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>플레이어 목록</Text>
-        <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => router.push("/players/new")}
-        >
-          <Text style={styles.addButtonText}>+ 새 플레이어</Text>
-        </TouchableOpacity>
-      </View>
+    <Layout>
+      <TopNav
+        middleContent="플레이어 목록"
+        middleTextStyle={{
+          fontSize: 24,
+          fontWeight: "bold",
+          color: isDarkmode ? themeColor.white : themeColor.black,
+        }}
+        rightContent={
+          <Button
+            status="primary"
+            size="md"
+            text="새 플레이어"
+            onPress={() => router.push("/players/new")}
+            style={{
+              paddingHorizontal: 4,
+              minWidth: 80,
+              borderRadius: 8,
+              marginRight: 5,
+            }}
+          />
+        }
+        leftContent={
+          <Ionicons
+            name="refresh-outline"
+            size={20}
+            color={isDarkmode ? themeColor.white : themeColor.black}
+            onPress={onRefresh}
+          />
+        }
+        backgroundColor={isDarkmode ? themeColor.dark : themeColor.white}
+        borderColor={isDarkmode ? themeColor.dark200 : themeColor.gray200}
+      />
 
       {loading && !refreshing ? (
-        <View style={styles.loadingContainer}>
+        <View
+          style={{
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: isDarkmode
+              ? themeColor.dark100
+              : themeColor.gray100,
+          }}
+        >
           <Text>불러오는 중...</Text>
         </View>
       ) : (
         <ScrollView
-          style={styles.list}
+          style={{
+            flex: 1,
+            backgroundColor: isDarkmode
+              ? themeColor.dark100
+              : themeColor.gray100,
+            padding: 16,
+          }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
         >
           {players.length > 0 ? (
             players.map((player) => (
-              <View key={player.id} style={styles.playerCard}>
-                <View style={styles.playerInfo}>
-                  <Text style={styles.playerName}>{player.name}</Text>
-                  {player.contact && (
-                    <Text style={styles.playerContact}>{player.contact}</Text>
-                  )}
-                </View>
-                <View style={styles.playerActions}>
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.editButton]}
-                    onPress={() => router.push(`/players/${player.id}` as any)}
-                  >
-                    <Text style={styles.editButtonText}>수정</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.deleteButton]}
-                    onPress={() => confirmDelete(player)}
-                  >
-                    <Text style={styles.deleteButtonText}>삭제</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
+              <TouchableOpacity
+                key={player.id}
+                onPress={() => router.push(`/players/${player.id}` as any)}
+                style={{ marginBottom: 16 }}
+                activeOpacity={0.7}
+              >
+                <Section
+                  style={{
+                    backgroundColor: isDarkmode
+                      ? themeColor.dark
+                      : themeColor.white,
+                    padding: 16,
+                    borderRadius: 16,
+                    shadowColor: isDarkmode ? "#000" : "#888",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: isDarkmode ? 0.2 : 0.08,
+                    shadowRadius: 8,
+                    elevation: 3,
+                    borderWidth: 1,
+                    borderColor: isDarkmode
+                      ? themeColor.dark200
+                      : themeColor.gray200,
+                    flexDirection: "row",
+                    justifyContent: "flex-start",
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      fontWeight="bold"
+                      size="h3"
+                      style={{
+                        color: isDarkmode ? themeColor.white : themeColor.black,
+                        marginBottom: 4,
+                      }}
+                    >
+                      {player.name}
+                    </Text>
+                    {player.contact && (
+                      <View
+                        style={{ flexDirection: "row", alignItems: "center" }}
+                      >
+                        <Ionicons
+                          name="call-outline"
+                          size={14}
+                          color={
+                            isDarkmode ? themeColor.gray400 : themeColor.gray500
+                          }
+                          style={{ marginRight: 4 }}
+                        />
+                        <Text
+                          size="sm"
+                          style={{
+                            color: isDarkmode
+                              ? themeColor.gray400
+                              : themeColor.gray500,
+                          }}
+                        >
+                          {player.contact}
+                        </Text>
+                      </View>
+                    )}
+                    {player.bank_account && (
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          marginTop: 4,
+                        }}
+                      >
+                        <Ionicons
+                          name="card-outline"
+                          size={14}
+                          color={
+                            isDarkmode ? themeColor.gray400 : themeColor.gray500
+                          }
+                          style={{ marginRight: 4 }}
+                        />
+                        <Text
+                          size="sm"
+                          style={{
+                            color: isDarkmode
+                              ? themeColor.gray400
+                              : themeColor.gray500,
+                          }}
+                        >
+                          {player.bank_account}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+
+                  <View style={{ flexDirection: "row", alignItems: "center" }}>
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        router.push(`/players/${player.id}` as any);
+                      }}
+                      style={{
+                        marginLeft: 8,
+                        backgroundColor: isDarkmode
+                          ? "rgba(99, 102, 241, 0.15)"
+                          : "rgba(99, 102, 241, 0.1)",
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Ionicons
+                        name="create-outline"
+                        size={18}
+                        color={themeColor.primary}
+                      />
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        confirmDelete(player);
+                      }}
+                      style={{
+                        marginLeft: 8,
+                        backgroundColor: isDarkmode
+                          ? "rgba(239, 68, 68, 0.15)"
+                          : "rgba(239, 68, 68, 0.1)",
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Ionicons
+                        name="trash-outline"
+                        size={18}
+                        color={
+                          isDarkmode ? themeColor.dark200 : themeColor.gray400
+                        }
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </Section>
+              </TouchableOpacity>
             ))
           ) : (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>등록된 플레이어가 없습니다.</Text>
-              <Text style={styles.emptySubText}>
-                새 플레이어를 추가해보세요!
+            <View
+              style={{
+                flex: 1,
+                alignItems: "center",
+                justifyContent: "center",
+                padding: 40,
+                marginTop: 50,
+              }}
+            >
+              <Ionicons
+                name="people-outline"
+                size={60}
+                color={isDarkmode ? themeColor.dark200 : themeColor.gray400}
+                style={{ marginBottom: 16, opacity: 0.6 }}
+              />
+              <Text
+                size="lg"
+                fontWeight="bold"
+                style={{
+                  marginBottom: 8,
+                  color: isDarkmode ? themeColor.white : themeColor.black,
+                }}
+              >
+                등록된 플레이어가 없습니다.
               </Text>
+              <Text
+                size="md"
+                style={{
+                  color: isDarkmode ? themeColor.gray400 : themeColor.gray500,
+                  textAlign: "center",
+                  marginBottom: 20,
+                }}
+              >
+                새로운 플레이어를 추가해보세요!
+              </Text>
+              <Button
+                text="+ 새 플레이어 추가"
+                onPress={() => router.push("/players/new")}
+                status="primary"
+                size="lg"
+                style={{ borderRadius: 12 }}
+              />
             </View>
           )}
         </ScrollView>
       )}
-    </View>
+    </Layout>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: "#f8f9fa",
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "bold",
-  },
-  addButton: {
-    backgroundColor: "#007bff",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 4,
-  },
-  addButtonText: {
-    color: "white",
-    fontWeight: "bold",
-  },
-  list: {
-    flex: 1,
-  },
-  playerCard: {
-    backgroundColor: "white",
-    padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  playerInfo: {
-    flex: 1,
-  },
-  playerName: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 4,
-  },
-  playerContact: {
-    fontSize: 14,
-    color: "#666",
-  },
-  playerActions: {
-    flexDirection: "row",
-    gap: 8,
-  },
-  actionButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 4,
-  },
-  editButton: {
-    backgroundColor: "#6c757d",
-  },
-  editButtonText: {
-    color: "white",
-    fontWeight: "bold",
-  },
-  deleteButton: {
-    backgroundColor: "#dc3545",
-  },
-  deleteButtonText: {
-    color: "white",
-    fontWeight: "bold",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 40,
-  },
-  emptyText: {
-    fontSize: 16,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  emptySubText: {
-    fontSize: 14,
-    color: "#666",
-  },
-});
