@@ -29,16 +29,22 @@ export type Database = {
           id: string;
           name: string;
           contact: string | null;
+          bank_account: string | null;
+          bank: string | null;
         };
         Insert: {
           id?: string;
           name: string;
           contact?: string | null;
+          bank_account?: string | null;
+          bank?: string | null;
         };
         Update: {
           id?: string;
           name?: string;
           contact?: string | null;
+          bank_account?: string | null;
+          bank?: string | null;
         };
       };
       meeting: {
@@ -215,6 +221,9 @@ export type Database = {
           reservation_required: boolean;
           reservation_method: string | null;
           price_info: string | null;
+          f_jokgu_ground_type: string | null;
+          reservation_link: string | null;
+          is_indoor: boolean | null;
         };
         Insert: {
           id?: string;
@@ -223,6 +232,9 @@ export type Database = {
           reservation_required: boolean;
           reservation_method?: string | null;
           price_info?: string | null;
+          f_jokgu_ground_type?: string | null;
+          reservation_link?: string | null;
+          is_indoor?: boolean | null;
         };
         Update: {
           id?: string;
@@ -231,6 +243,33 @@ export type Database = {
           reservation_required?: boolean;
           reservation_method?: string | null;
           price_info?: string | null;
+          f_jokgu_ground_type?: string | null;
+          reservation_link?: string | null;
+          is_indoor?: boolean | null;
+        };
+      };
+      jokgu_ground_type: {
+        Row: {
+          id: string;
+          type_name: string;
+          created_at: string;
+        };
+        Insert: {
+          type_name: string;
+        };
+        Update: {
+          type_name?: string;
+        };
+      };
+      bank: {
+        Row: {
+          bank: string;
+        };
+        Insert: {
+          bank: string;
+        };
+        Update: {
+          name?: string;
         };
       };
     };

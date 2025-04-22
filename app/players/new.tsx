@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -6,15 +6,39 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
+  ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { playerAPI } from "../../lib/api";
+import { playerAPI, bankAPI } from "../../lib/api";
+import { Bank } from "../../types";
+import { Picker } from "@react-native-picker/picker";
 
 export default function NewPlayerScreen() {
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
+  const [bankAccount, setBankAccount] = useState("");
+  const [bank, setBank] = useState("");
   const [loading, setLoading] = useState(false);
+  const [banks, setBanks] = useState<Bank[]>([]);
+  const [loadingBanks, setLoadingBanks] = useState(true);
   const router = useRouter();
+
+  useEffect(() => {
+    fetchBanks();
+  }, []);
+
+  const fetchBanks = async () => {
+    try {
+      setLoadingBanks(true);
+      const data = await bankAPI.getAll();
+      setBanks(data);
+    } catch (error) {
+      console.error("은행 목록 조회 중 오류 발생:", error);
+      Alert.alert("오류", "은행 목록을 불러오는 중 오류가 발생했습니다.");
+    } finally {
+      setLoadingBanks(false);
+    }
+  };
 
   async function handleSubmit() {
     if (!name.trim()) {
@@ -28,6 +52,8 @@ export default function NewPlayerScreen() {
       await playerAPI.create({
         name: name.trim(),
         contact: contact.trim() ? contact.trim() : undefined,
+        bank_account: bankAccount.trim() ? bankAccount.trim() : undefined,
+        bank: bank ? bank : undefined,
       });
 
       Alert.alert("등록 완료", "플레이어가 성공적으로 등록되었습니다.", [
@@ -42,7 +68,7 @@ export default function NewPlayerScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>플레이어 추가</Text>
       </View>
@@ -70,6 +96,37 @@ export default function NewPlayerScreen() {
           />
         </View>
 
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>은행</Text>
+          <View style={[styles.input, styles.pickerContainer]}>
+            <Picker
+              selectedValue={bank}
+              onValueChange={(itemValue: string) => setBank(itemValue)}
+              style={styles.picker}
+              enabled={!loadingBanks}
+            >
+              <Picker.Item label="은행을 선택하세요" value="" />
+              {banks.map((item) => (
+                <Picker.Item
+                  key={item.bank}
+                  label={item.bank}
+                  value={item.bank}
+                />
+              ))}
+            </Picker>
+          </View>
+        </View>
+
+        <View style={styles.formGroup}>
+          <Text style={styles.label}>계좌번호</Text>
+          <TextInput
+            style={styles.input}
+            value={bankAccount}
+            onChangeText={setBankAccount}
+            placeholder="계좌번호를 입력하세요 (선택사항)"
+          />
+        </View>
+
         <TouchableOpacity
           style={[styles.submitButton, loading && styles.disabledButton]}
           onPress={handleSubmit}
@@ -88,7 +145,7 @@ export default function NewPlayerScreen() {
           <Text style={styles.cancelButtonText}>취소</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -129,6 +186,14 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     padding: 12,
     fontSize: 16,
+  },
+  pickerContainer: {
+    padding: 0,
+    overflow: "hidden",
+  },
+  picker: {
+    marginTop: -8,
+    marginBottom: -8,
   },
   submitButton: {
     backgroundColor: "#007bff",

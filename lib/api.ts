@@ -1,9 +1,11 @@
 import {
+  Bank,
   Game,
   GameSet,
   GameSetScore,
   GameTeam,
   JokguGround,
+  JokguGroundType,
   Meeting,
   Player,
   ScoreLog,
@@ -455,5 +457,32 @@ export const groundAPI = {
 
     // 이벤트 발생
     eventEmitter.emit(EventTypes.GROUND_CHANGED);
+  },
+};
+
+// 은행 API
+export const bankAPI = {
+  // 모든 은행 조회
+  getAll: async (): Promise<Bank[]> => {
+    const { data, error } = await supabase
+      .from("bank")
+      .select("*")
+      .order("bank");
+
+    if (error) throw error;
+    return data || [];
+  },
+};
+
+export const jokguGroundTypeAPI = {
+  // 모든 경기장 타입 조회
+  getAll: async (): Promise<JokguGroundType[]> => {
+    const { data, error } = await supabase
+      .from("jokgu_ground_type")
+      .select("*")
+      .order("type_name");
+
+    if (error) throw error;
+    return data || [];
   },
 };

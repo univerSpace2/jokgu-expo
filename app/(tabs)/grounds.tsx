@@ -4,10 +4,12 @@ import {
   View,
   TouchableOpacity,
   RefreshControl,
+  Alert,
+  Linking,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { groundAPI } from "../../lib/api";
-import { JokguGround } from "../../types";
+import { groundAPI, jokguGroundTypeAPI } from "../../lib/api";
+import { JokguGround, JokguGroundType } from "../../types";
 import { eventEmitter, EventTypes } from "../../lib/eventEmitter";
 import { useAppFocus } from "../../lib/utils";
 import {
@@ -23,10 +25,24 @@ import { Ionicons } from "@expo/vector-icons";
 
 export default function GroundsScreen() {
   const [grounds, setGrounds] = useState<JokguGround[]>([]);
+  const [groundTypes, setGroundTypes] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
   const { theme, isDarkmode } = useTheme();
+
+  const fetchGroundTypes = useCallback(async () => {
+    try {
+      const types = await jokguGroundTypeAPI.getAll();
+      const typesMap: Record<string, string> = {};
+      types.forEach((type) => {
+        typesMap[type.id] = type.type_name;
+      });
+      setGroundTypes(typesMap);
+    } catch (error) {
+      console.error("족구장 타입 조회 중 오류 발생:", error);
+    }
+  }, []);
 
   const fetchGrounds = useCallback(async () => {
     try {
@@ -45,6 +61,7 @@ export default function GroundsScreen() {
 
   useEffect(() => {
     fetchGrounds();
+    fetchGroundTypes();
 
     // 이벤트 구독 설정
     const unsubscribe = eventEmitter.on(EventTypes.GROUND_CHANGED, () => {
@@ -55,16 +72,33 @@ export default function GroundsScreen() {
     return () => {
       unsubscribe();
     };
-  }, [fetchGrounds]);
+  }, [fetchGrounds, fetchGroundTypes]);
+
+  const handleOpenReservationLink = async (link: string) => {
+    if (link) {
+      try {
+        const canOpen = await Linking.canOpenURL(link);
+        if (canOpen) {
+          await Linking.openURL(link);
+        } else {
+          Alert.alert("오류", "예약 링크를 열 수 없습니다.");
+        }
+      } catch (error) {
+        console.error("예약 링크 열기 오류:", error);
+        Alert.alert("오류", "예약 링크를 여는데 실패했습니다.");
+      }
+    }
+  };
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
       await fetchGrounds();
+      await fetchGroundTypes();
     } finally {
       setRefreshing(false);
     }
-  }, [fetchGrounds]);
+  }, [fetchGrounds, fetchGroundTypes]);
 
   return (
     <Layout>
@@ -204,6 +238,7 @@ export default function GroundsScreen() {
                     style={{
                       flexDirection: "row",
                       alignItems: "center",
+                      marginBottom: 4,
                     }}
                   >
                     <Ionicons
@@ -224,6 +259,83 @@ export default function GroundsScreen() {
                     >
                       {ground.location}
                     </Text>
+                  </View>
+
+                  <View style={{ flexDirection: "row", marginTop: 8 }}>
+                    {ground.is_indoor !== undefined && (
+                      <View
+                        style={{
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                          backgroundColor: ground.is_indoor
+                            ? isDarkmode
+                              ? "rgba(59, 130, 246, 0.2)"
+                              : "rgba(59, 130, 246, 0.1)"
+                            : isDarkmode
+                            ? "rgba(245, 158, 11, 0.2)"
+                            : "rgba(245, 158, 11, 0.1)",
+                          borderRadius: 4,
+                          marginRight: 8,
+                        }}
+                      >
+                        <Text
+                          size="sm"
+                          style={{
+                            color: ground.is_indoor ? "#3b82f6" : "#f59e0b",
+                          }}
+                        >
+                          {ground.is_indoor ? "실내" : "실외"}
+                        </Text>
+                      </View>
+                    )}
+
+                    {ground.f_jokgu_ground_type &&
+                      groundTypes[ground.f_jokgu_ground_type] && (
+                        <View
+                          style={{
+                            paddingHorizontal: 8,
+                            paddingVertical: 4,
+                            backgroundColor: isDarkmode
+                              ? "rgba(139, 92, 246, 0.2)"
+                              : "rgba(139, 92, 246, 0.1)",
+                            borderRadius: 4,
+                            marginRight: 8,
+                          }}
+                        >
+                          <Text size="sm" style={{ color: "#8b5cf6" }}>
+                            {groundTypes[ground.f_jokgu_ground_type]}
+                          </Text>
+                        </View>
+                      )}
+
+                    {ground.reservation_link && (
+                      <TouchableOpacity
+                        style={{
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                          backgroundColor: isDarkmode
+                            ? "rgba(14, 165, 233, 0.2)"
+                            : "rgba(14, 165, 233, 0.1)",
+                          borderRadius: 4,
+                          flexDirection: "row",
+                          alignItems: "center",
+                        }}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleOpenReservationLink(ground.reservation_link!);
+                        }}
+                      >
+                        <Ionicons
+                          name="link-outline"
+                          size={14}
+                          color="#0ea5e9"
+                          style={{ marginRight: 4 }}
+                        />
+                        <Text size="sm" style={{ color: "#0ea5e9" }}>
+                          예약하기
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </Section>
               </TouchableOpacity>

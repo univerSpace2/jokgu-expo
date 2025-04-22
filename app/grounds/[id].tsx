@@ -7,10 +7,11 @@ import {
   ScrollView,
   TextInput as NativeTextInput,
   Switch,
+  TouchableOpacity,
 } from "react-native";
 import { useLocalSearchParams, Stack, useRouter } from "expo-router";
-import { groundAPI } from "../../lib/api";
-import { JokguGround } from "../../types";
+import { groundAPI, jokguGroundTypeAPI } from "../../lib/api";
+import { JokguGround, JokguGroundType } from "../../types";
 import {
   Layout,
   Text,
@@ -29,6 +30,8 @@ export default function GroundDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [groundTypes, setGroundTypes] = useState<JokguGroundType[]>([]);
+  const [groundTypeName, setGroundTypeName] = useState("");
   const router = useRouter();
   const { isDarkmode } = useTheme();
 
@@ -40,6 +43,20 @@ export default function GroundDetailScreen() {
   const [reservationMethod, setReservationMethod] = useState("");
   const [reservationLink, setReservationLink] = useState("");
   const [priceInfo, setPriceInfo] = useState("");
+  const [groundTypeId, setGroundTypeId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchGroundTypes = async () => {
+      try {
+        const types = await jokguGroundTypeAPI.getAll();
+        setGroundTypes(types);
+      } catch (error) {
+        console.error("족구장 타입 조회 중 오류 발생:", error);
+      }
+    };
+
+    fetchGroundTypes();
+  }, []);
 
   useEffect(() => {
     const fetchGround = async () => {
@@ -58,6 +75,17 @@ export default function GroundDetailScreen() {
             setReservationMethod(data.reservation_method || "");
             setReservationLink(data.reservation_link || "");
             setPriceInfo(data.price_info || "");
+            setGroundTypeId(data.f_jokgu_ground_type || null);
+
+            // 족구장 타입 이름 찾기
+            if (data.f_jokgu_ground_type && groundTypes.length > 0) {
+              const type = groundTypes.find(
+                (t) => t.id === data.f_jokgu_ground_type
+              );
+              if (type) {
+                setGroundTypeName(type.type_name);
+              }
+            }
           }
         }
       } catch (error) {
@@ -69,7 +97,7 @@ export default function GroundDetailScreen() {
     };
 
     fetchGround();
-  }, [id]);
+  }, [id, groundTypes]);
 
   const handleShareAddress = async () => {
     if (ground?.location) {
@@ -136,6 +164,7 @@ export default function GroundDetailScreen() {
       setReservationMethod(ground.reservation_method || "");
       setReservationLink(ground.reservation_link || "");
       setPriceInfo(ground.price_info || "");
+      setGroundTypeId(ground.f_jokgu_ground_type || null);
     }
     setIsEditing(false);
   };
@@ -162,10 +191,26 @@ export default function GroundDetailScreen() {
         reservation_method: reservationMethod.trim() || undefined,
         reservation_link: reservationLink.trim() || undefined,
         price_info: priceInfo.trim() || undefined,
+        f_jokgu_ground_type: groundTypeId || undefined,
       };
 
       const updatedGround = await groundAPI.update(id!, updateData);
       setGround(updatedGround);
+
+      // 업데이트된 타입 이름 설정
+      if (updatedGround.f_jokgu_ground_type) {
+        const type = groundTypes.find(
+          (t) => t.id === updatedGround.f_jokgu_ground_type
+        );
+        if (type) {
+          setGroundTypeName(type.type_name);
+        } else {
+          setGroundTypeName("");
+        }
+      } else {
+        setGroundTypeName("");
+      }
+
       setIsEditing(false);
 
       Alert.alert("완료", "경기장 정보가 수정되었습니다.");
@@ -337,6 +382,95 @@ export default function GroundDetailScreen() {
           numberOfLines={3}
         />
 
+        {groundTypes.length > 0 && (
+          <View style={{ marginBottom: 16 }}>
+            <Text
+              style={{
+                marginBottom: 4,
+                fontWeight: "bold",
+                color: isDarkmode ? themeColor.gray300 : themeColor.gray500,
+              }}
+            >
+              족구장 타입
+            </Text>
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                marginTop: 8,
+              }}
+            >
+              {groundTypes.map((type) => (
+                <TouchableOpacity
+                  key={type.id}
+                  style={{
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
+                    borderRadius: 16,
+                    backgroundColor:
+                      groundTypeId === type.id
+                        ? isDarkmode
+                          ? themeColor.primary700
+                          : themeColor.primary
+                        : isDarkmode
+                        ? themeColor.dark200
+                        : themeColor.gray200,
+                    marginRight: 8,
+                    marginBottom: 8,
+                  }}
+                  onPress={() => setGroundTypeId(type.id)}
+                >
+                  <Text
+                    size="sm"
+                    style={{
+                      color:
+                        groundTypeId === type.id
+                          ? "white"
+                          : isDarkmode
+                          ? themeColor.gray300
+                          : themeColor.gray500,
+                    }}
+                  >
+                    {type.type_name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                style={{
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 16,
+                  backgroundColor:
+                    groundTypeId === null
+                      ? isDarkmode
+                        ? themeColor.primary700
+                        : themeColor.primary
+                      : isDarkmode
+                      ? themeColor.dark200
+                      : themeColor.gray200,
+                  marginRight: 8,
+                  marginBottom: 8,
+                }}
+                onPress={() => setGroundTypeId(null)}
+              >
+                <Text
+                  size="sm"
+                  style={{
+                    color:
+                      groundTypeId === null
+                        ? "white"
+                        : isDarkmode
+                        ? themeColor.gray300
+                        : themeColor.gray500,
+                  }}
+                >
+                  없음
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         <View
           style={{
             flexDirection: "row",
@@ -496,6 +630,28 @@ export default function GroundDetailScreen() {
                 }}
               >
                 {ground.is_indoor ? "실내" : "실외"}
+              </Text>
+            </View>
+          )}
+
+          {groundTypeName && (
+            <View style={{ marginBottom: 16 }}>
+              <Text
+                size="sm"
+                style={{
+                  marginBottom: 4,
+                  color: isDarkmode ? themeColor.gray300 : themeColor.gray500,
+                  fontWeight: "bold",
+                }}
+              >
+                코트 타입
+              </Text>
+              <Text
+                style={{
+                  color: isDarkmode ? themeColor.white : themeColor.black,
+                }}
+              >
+                {groundTypeName}
               </Text>
             </View>
           )}

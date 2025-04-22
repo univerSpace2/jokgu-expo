@@ -3,6 +3,7 @@ export interface Player {
   name: string;
   contact?: string;
   bank_account?: string;
+  bank?: string;
 }
 
 export interface Meeting {
@@ -86,4 +87,15 @@ export interface JokguGround {
   f_jokgu_ground_type?: string;
   reservation_link?: string;
   is_indoor?: boolean;
+}
+
+export interface JokguGroundType {
+  id: string;
+  created_at: string;
+  type_name: string;
+}
+
+export interface Bank {
+  bank: string;
+  created_at: string;
 }
