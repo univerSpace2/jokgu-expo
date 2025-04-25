@@ -99,9 +99,9 @@ export default function PlayersScreen() {
   return (
     <Layout>
       <TopNav
-        middleContent="플레이어 목록"
+        middleContent="플레이어"
         middleTextStyle={{
-          fontSize: 24,
+          fontSize: 20,
           fontWeight: "bold",
           color: isDarkmode ? themeColor.white : themeColor.black,
         }}
