@@ -141,6 +141,37 @@ export default function MeetingDetailScreen() {
     return `${hours}:${minutes}`;
   };
 
+  // 모임 편집 화면으로 이동
+  const handleEditMeeting = () => {
+    router.push(`/meetings/edit?id=${id}`);
+  };
+
+  // 모임 삭제 처리
+  const handleDeleteMeeting = () => {
+    Alert.alert(
+      "모임 삭제",
+      "이 모임을 정말 삭제하시겠습니까? 모든 게임 정보도 함께 삭제됩니다.",
+      [
+        { text: "취소", style: "cancel" },
+        {
+          text: "삭제",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await meetingAPI.delete(id);
+              Alert.alert("삭제 완료", "모임이 삭제되었습니다.", [
+                { text: "확인", onPress: () => router.back() },
+              ]);
+            } catch (error) {
+              console.error("모임 삭제 중 오류 발생:", error);
+              Alert.alert("오류", "모임 삭제 중 오류가 발생했습니다.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (loading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
@@ -178,6 +209,23 @@ export default function MeetingDetailScreen() {
           <FontAwesome name="arrow-left" size={18} color="#007bff" />
           <Text style={styles.backButtonText}>뒤로</Text>
         </TouchableOpacity>
+
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={handleEditMeeting}
+          >
+            <FontAwesome name="edit" size={18} color="#007bff" />
+            <Text style={styles.editButtonText}>편집</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={handleDeleteMeeting}
+          >
+            <FontAwesome name="trash" size={18} color="#dc3545" />
+            <Text style={styles.deleteButtonText}>삭제</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* 모임 정보 */}
@@ -206,7 +254,12 @@ export default function MeetingDetailScreen() {
       <View style={styles.sectionContainer}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>참여자</Text>
-          <Text style={styles.sectionCount}>{members.length}명</Text>
+          <TouchableOpacity
+            style={styles.addMemberButton}
+            onPress={() => router.push(`/meetings/members?id=${id}`)}
+          >
+            <Text style={styles.addMemberButtonText}>참여자 관리</Text>
+          </TouchableOpacity>
         </View>
         <View style={styles.membersList}>
           {members.map((member) => (
@@ -240,11 +293,56 @@ export default function MeetingDetailScreen() {
             >
               <View style={styles.gameHeader}>
                 <Text style={styles.gameTitle}>게임 {index + 1}</Text>
-                <View style={styles.gameDetails}>
-                  <Text style={styles.gameDetail}>
-                    {game.num_of_sets}세트 / {game.winning_score}점
-                  </Text>
+                <View style={styles.gameActions}>
+                  <TouchableOpacity
+                    style={styles.gameActionButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      router.push(`/games/edit?id=${game.id}`);
+                    }}
+                  >
+                    <FontAwesome name="edit" size={14} color="#007bff" />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.gameActionButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      Alert.alert(
+                        "게임 삭제",
+                        "이 게임을 정말 삭제하시겠습니까?",
+                        [
+                          { text: "취소", style: "cancel" },
+                          {
+                            text: "삭제",
+                            style: "destructive",
+                            onPress: async () => {
+                              try {
+                                await gameAPI.delete(game.id);
+                                Alert.alert(
+                                  "삭제 완료",
+                                  "게임이 삭제되었습니다."
+                                );
+                              } catch (error) {
+                                console.error("게임 삭제 중 오류 발생:", error);
+                                Alert.alert(
+                                  "오류",
+                                  "게임 삭제 중 오류가 발생했습니다."
+                                );
+                              }
+                            },
+                          },
+                        ]
+                      );
+                    }}
+                  >
+                    <FontAwesome name="trash" size={14} color="#dc3545" />
+                  </TouchableOpacity>
                 </View>
+              </View>
+              <View style={styles.gameDetails}>
+                <Text style={styles.gameDetail}>
+                  {game.num_of_sets}세트 / {game.winning_score}점
+                </Text>
               </View>
               {/* 최종 승리팀 표시 */}
               {gameWinners[game.id] ? (
@@ -309,6 +407,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "space-between",
     padding: 16,
   },
   backButton: {
@@ -319,6 +418,28 @@ const styles = StyleSheet.create({
     color: "#007bff",
     fontSize: 16,
     marginLeft: 6,
+  },
+  headerActions: {
+    flexDirection: "row",
+  },
+  editButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  editButtonText: {
+    color: "#007bff",
+    fontSize: 16,
+    marginLeft: 4,
+  },
+  deleteButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  deleteButtonText: {
+    color: "#dc3545",
+    fontSize: 16,
+    marginLeft: 4,
   },
   loadingContainer: {
     flex: 1,
@@ -400,6 +521,16 @@ const styles = StyleSheet.create({
   memberName: {
     fontSize: 14,
   },
+  addMemberButton: {
+    backgroundColor: "#6c757d",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  addMemberButtonText: {
+    color: "white",
+    fontWeight: "500",
+  },
   addGameButton: {
     backgroundColor: "#007bff",
     paddingHorizontal: 12,
@@ -424,16 +555,25 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 8,
   },
   gameTitle: {
     fontSize: 16,
     fontWeight: "600",
+  },
+  gameActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  gameActionButton: {
+    padding: 4,
   },
   gameDetails: {
     backgroundColor: "#e9ecef",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
+    alignSelf: "flex-start",
   },
   gameDetail: {
     fontSize: 12,
