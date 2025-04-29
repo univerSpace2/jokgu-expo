@@ -30,6 +30,7 @@ export default function GroundDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [groundTypes, setGroundTypes] = useState<JokguGroundType[]>([]);
   const [groundTypeName, setGroundTypeName] = useState("");
   const router = useRouter();
@@ -220,6 +221,39 @@ export default function GroundDetailScreen() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleDeleteGround = () => {
+    Alert.alert(
+      "경기장 삭제",
+      "정말로 이 경기장을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+      [
+        {
+          text: "취소",
+          style: "cancel",
+        },
+        {
+          text: "삭제",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setIsDeleting(true);
+              await groundAPI.delete(id!);
+              Alert.alert("삭제 완료", "경기장이 삭제되었습니다.", [
+                {
+                  text: "확인",
+                  onPress: () => router.push("/(tabs)/grounds"),
+                },
+              ]);
+            } catch (error) {
+              console.error("경기장 삭제 중 오류 발생:", error);
+              Alert.alert("오류", "경기장 삭제에 실패했습니다.");
+              setIsDeleting(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleGoBack = () => {
@@ -719,6 +753,7 @@ export default function GroundDetailScreen() {
             flexDirection: "row",
             justifyContent: "space-between",
             marginTop: 16,
+            marginBottom: 16,
           }}
         >
           <Button
@@ -730,12 +765,21 @@ export default function GroundDetailScreen() {
           />
           <Button
             status="danger"
-            text="뒤로가기"
-            onPress={handleGoBack}
+            text="삭제하기"
+            onPress={handleDeleteGround}
             style={{ flex: 1 }}
             outline
+            disabled={isDeleting}
           />
         </View>
+
+        <Button
+          status="info"
+          text="뒤로가기"
+          onPress={handleGoBack}
+          style={{ marginTop: 8 }}
+          disabled={isDeleting}
+        />
       </>
     );
   };
