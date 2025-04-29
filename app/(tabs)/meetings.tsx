@@ -88,9 +88,9 @@ export default function MeetingsTab() {
   return (
     <Layout>
       <TopNav
-        middleContent="모임 목록"
+        middleContent="모임"
         middleTextStyle={{
-          fontSize: 24,
+          fontSize: 20,
           fontWeight: "bold",
           color: isDarkmode ? themeColor.white : themeColor.black,
         }}

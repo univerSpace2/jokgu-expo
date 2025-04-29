@@ -103,9 +103,9 @@ export default function GroundsScreen() {
   return (
     <Layout>
       <TopNav
-        middleContent="경기장 목록"
+        middleContent="족구장"
         middleTextStyle={{
-          fontSize: 24,
+          fontSize: 20,
           fontWeight: "bold",
           color: isDarkmode ? themeColor.white : themeColor.black,
         }}
