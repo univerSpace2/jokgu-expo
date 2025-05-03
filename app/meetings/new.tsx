@@ -16,6 +16,7 @@ import { groundAPI } from "../../lib/api";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import CustomDatePicker from "../../components/CustomDatePicker";
 import CustomTimePicker from "../../components/CustomTimePicker";
+import { useTheme, themeColor } from "react-native-rapi-ui";
 
 export default function NewMeetingScreen() {
   // 날짜/시간 관련 상태
@@ -30,6 +31,7 @@ export default function NewMeetingScreen() {
   const [grounds, setGrounds] = useState<JokguGround[]>([]);
   const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
   const router = useRouter();
+  const isDarkmode = false;
 
   useEffect(() => {
     fetchPlayers();
@@ -137,32 +139,96 @@ export default function NewMeetingScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={[
+        styles.container,
+        { backgroundColor: isDarkmode ? themeColor.dark100 : "#f8f9fa" },
+      ]}
+    >
       <View style={styles.header}>
-        <Text style={styles.title}>새 모임 만들기</Text>
+        <Text
+          style={[
+            styles.title,
+            { color: isDarkmode ? themeColor.white : "#212529" },
+          ]}
+        >
+          새 모임 만들기
+        </Text>
       </View>
 
-      <View style={styles.form}>
+      <View
+        style={[
+          styles.form,
+          {
+            backgroundColor: isDarkmode ? themeColor.dark : "white",
+            shadowColor: isDarkmode ? "#000" : "#000",
+            borderColor: isDarkmode ? themeColor.dark200 : undefined,
+          },
+        ]}
+      >
         <View style={styles.formGroup}>
-          <Text style={styles.label}>날짜 * (YYYY-MM-DD)</Text>
+          <Text
+            style={[
+              styles.label,
+              { color: isDarkmode ? themeColor.white : "#212529" },
+            ]}
+          >
+            날짜 * (YYYY-MM-DD)
+          </Text>
           <CustomDatePicker value={date} onChange={setDate} />
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>시작 시간 * (HH:MM)</Text>
+          <Text
+            style={[
+              styles.label,
+              { color: isDarkmode ? themeColor.white : "#212529" },
+            ]}
+          >
+            시작 시간 * (HH:MM)
+          </Text>
           <CustomTimePicker value={startTime} onChange={setStartTime} />
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>종료 시간 (선택사항)</Text>
+          <Text
+            style={[
+              styles.label,
+              { color: isDarkmode ? themeColor.white : "#212529" },
+            ]}
+          >
+            종료 시간 (선택사항)
+          </Text>
           <CustomTimePicker value={endTime} onChange={setEndTime} />
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>장소</Text>
+          <Text
+            style={[
+              styles.label,
+              { color: isDarkmode ? themeColor.white : "#212529" },
+            ]}
+          >
+            장소
+          </Text>
           {location ? (
-            <View style={styles.selectedLocation}>
-              <Text style={styles.selectedLocationText}>{location}</Text>
+            <View
+              style={[
+                styles.selectedLocation,
+                {
+                  borderColor: isDarkmode ? themeColor.dark200 : "#ced4da",
+                  backgroundColor: isDarkmode ? themeColor.dark200 : "white",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.selectedLocationText,
+                  { color: isDarkmode ? themeColor.white : "#212529" },
+                ]}
+              >
+                {location}
+              </Text>
               <TouchableOpacity
                 onPress={() => {
                   setLocation("");
@@ -180,6 +246,22 @@ export default function NewMeetingScreen() {
                   style={[
                     styles.groundItem,
                     locationId === ground.id && styles.groundItemSelected,
+                    {
+                      backgroundColor: isDarkmode
+                        ? locationId === ground.id
+                          ? "#007bff"
+                          : themeColor.dark200
+                        : locationId === ground.id
+                        ? "#007bff"
+                        : "#f8f9fa",
+                      borderColor: isDarkmode
+                        ? locationId === ground.id
+                          ? "#007bff"
+                          : themeColor.dark200
+                        : locationId === ground.id
+                        ? "#007bff"
+                        : "#ced4da",
+                    },
                   ]}
                   onPress={() => handleGroundSelection(ground.id, ground.name)}
                 >
@@ -187,6 +269,14 @@ export default function NewMeetingScreen() {
                     style={[
                       styles.groundName,
                       locationId === ground.id && styles.groundNameSelected,
+                      {
+                        color:
+                          locationId === ground.id
+                            ? "white"
+                            : isDarkmode
+                            ? themeColor.white
+                            : "#212529",
+                      },
                     ]}
                   >
                     {ground.name}
@@ -194,7 +284,12 @@ export default function NewMeetingScreen() {
                 </TouchableOpacity>
               ))}
               {grounds.length === 0 && (
-                <Text style={styles.noGroundsText}>
+                <Text
+                  style={[
+                    styles.noGroundsText,
+                    { color: isDarkmode ? themeColor.gray400 : "#6c757d" },
+                  ]}
+                >
                   등록된 족구장이 없습니다.
                 </Text>
               )}
@@ -203,7 +298,14 @@ export default function NewMeetingScreen() {
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>참여 플레이어 선택</Text>
+          <Text
+            style={[
+              styles.label,
+              { color: isDarkmode ? themeColor.white : "#212529" },
+            ]}
+          >
+            참여 플레이어 선택
+          </Text>
           <View style={styles.playersList}>
             {players.map((player) => (
               <TouchableOpacity
@@ -212,6 +314,22 @@ export default function NewMeetingScreen() {
                   styles.playerItem,
                   selectedPlayers.includes(player.id) &&
                     styles.playerItemSelected,
+                  {
+                    backgroundColor: isDarkmode
+                      ? selectedPlayers.includes(player.id)
+                        ? "#007bff"
+                        : themeColor.dark200
+                      : selectedPlayers.includes(player.id)
+                      ? "#007bff"
+                      : "#f8f9fa",
+                    borderColor: isDarkmode
+                      ? selectedPlayers.includes(player.id)
+                        ? "#007bff"
+                        : themeColor.dark200
+                      : selectedPlayers.includes(player.id)
+                      ? "#007bff"
+                      : "#ced4da",
+                  },
                 ]}
                 onPress={() => togglePlayerSelection(player.id)}
               >
@@ -220,6 +338,13 @@ export default function NewMeetingScreen() {
                     styles.playerName,
                     selectedPlayers.includes(player.id) &&
                       styles.playerNameSelected,
+                    {
+                      color: selectedPlayers.includes(player.id)
+                        ? "white"
+                        : isDarkmode
+                        ? themeColor.white
+                        : "#212529",
+                    },
                   ]}
                 >
                   {player.name}
@@ -244,7 +369,14 @@ export default function NewMeetingScreen() {
           onPress={() => router.back()}
           disabled={loading}
         >
-          <Text style={styles.cancelButtonText}>취소</Text>
+          <Text
+            style={[
+              styles.cancelButtonText,
+              { color: isDarkmode ? themeColor.gray400 : "#6c757d" },
+            ]}
+          >
+            취소
+          </Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -255,7 +387,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
-    backgroundColor: "#f8f9fa",
   },
   header: {
     marginBottom: 24,

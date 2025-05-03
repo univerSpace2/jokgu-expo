@@ -16,6 +16,7 @@ import { meetingAPI, groundAPI } from "../../lib/api";
 import { Meeting, JokguGround } from "../../types";
 import CustomDatePicker from "../../components/CustomDatePicker";
 import CustomTimePicker from "../../components/CustomTimePicker";
+import { useTheme, themeColor } from "react-native-rapi-ui";
 
 export default function EditMeetingScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -27,6 +28,7 @@ export default function EditMeetingScreen() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const router = useRouter();
+  const isDarkmode = false;
 
   // 족구장 관련 상태
   const [grounds, setGrounds] = useState<JokguGround[]>([]);
@@ -121,16 +123,46 @@ export default function EditMeetingScreen() {
         onRequestClose={() => setShowGroundModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>족구장 선택</Text>
+          <View
+            style={[
+              styles.modalContent,
+              { backgroundColor: isDarkmode ? themeColor.dark : "white" },
+            ]}
+          >
+            <View
+              style={[
+                styles.modalHeader,
+                {
+                  borderBottomColor: isDarkmode
+                    ? themeColor.dark200
+                    : "#dee2e6",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.modalTitle,
+                  { color: isDarkmode ? themeColor.white : "#212529" },
+                ]}
+              >
+                족구장 선택
+              </Text>
               <TouchableOpacity onPress={() => setShowGroundModal(false)}>
-                <FontAwesome name="times" size={20} color="#6c757d" />
+                <FontAwesome
+                  name="times"
+                  size={20}
+                  color={isDarkmode ? themeColor.gray400 : "#6c757d"}
+                />
               </TouchableOpacity>
             </View>
 
             <TouchableOpacity
-              style={styles.directInputButton}
+              style={[
+                styles.directInputButton,
+                {
+                  backgroundColor: isDarkmode ? themeColor.dark200 : "#f8f9fa",
+                },
+              ]}
               onPress={() => {
                 setDirectInput(true);
                 setShowGroundModal(false);
@@ -144,19 +176,47 @@ export default function EditMeetingScreen() {
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={styles.groundItem}
+                  style={[
+                    styles.groundItem,
+                    {
+                      borderBottomColor: isDarkmode
+                        ? themeColor.dark200
+                        : "#f1f3f5",
+                    },
+                  ]}
                   onPress={() => {
                     setLocation(item.name);
                     setShowGroundModal(false);
                     setDirectInput(false);
                   }}
                 >
-                  <Text style={styles.groundName}>{item.name}</Text>
-                  <Text style={styles.groundLocation}>{item.location}</Text>
+                  <Text
+                    style={[
+                      styles.groundName,
+                      { color: isDarkmode ? themeColor.white : "#212529" },
+                    ]}
+                  >
+                    {item.name}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.groundLocation,
+                      { color: isDarkmode ? themeColor.gray400 : "#6c757d" },
+                    ]}
+                  >
+                    {item.location}
+                  </Text>
                 </TouchableOpacity>
               )}
               ListEmptyComponent={
-                <Text style={styles.emptyText}>등록된 족구장이 없습니다.</Text>
+                <Text
+                  style={[
+                    styles.emptyText,
+                    { color: isDarkmode ? themeColor.gray400 : "#6c757d" },
+                  ]}
+                >
+                  등록된 족구장이 없습니다.
+                </Text>
               }
             />
           </View>
@@ -167,15 +227,35 @@ export default function EditMeetingScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>불러오는 중...</Text>
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: isDarkmode ? themeColor.dark100 : "#f8f9fa" },
+        ]}
+      >
+        <Text style={{ color: isDarkmode ? themeColor.white : "#212529" }}>
+          불러오는 중...
+        </Text>
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
+    <ScrollView
+      style={[
+        styles.container,
+        { backgroundColor: isDarkmode ? themeColor.dark100 : "#f8f9fa" },
+      ]}
+    >
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: isDarkmode ? themeColor.dark : "white",
+            borderBottomColor: isDarkmode ? themeColor.dark200 : "#dee2e6",
+          },
+        ]}
+      >
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
@@ -183,51 +263,122 @@ export default function EditMeetingScreen() {
           <FontAwesome name="arrow-left" size={18} color="#007bff" />
           <Text style={styles.backButtonText}>뒤로</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>모임 편집</Text>
+        <Text
+          style={[
+            styles.title,
+            { color: isDarkmode ? themeColor.white : "#212529" },
+          ]}
+        >
+          모임 편집
+        </Text>
         <View style={{ width: 50 }} />
       </View>
 
-      <View style={styles.form}>
+      <View
+        style={[
+          styles.form,
+          {
+            backgroundColor: isDarkmode ? themeColor.dark : "white",
+            shadowColor: isDarkmode ? "#000" : "#000",
+          },
+        ]}
+      >
         <View style={styles.formGroup}>
-          <Text style={styles.label}>날짜 * (YYYY-MM-DD)</Text>
+          <Text
+            style={[
+              styles.label,
+              { color: isDarkmode ? themeColor.white : "#212529" },
+            ]}
+          >
+            날짜 * (YYYY-MM-DD)
+          </Text>
           <CustomDatePicker value={date} onChange={setDate} />
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>시작 시간 * (HH:MM)</Text>
+          <Text
+            style={[
+              styles.label,
+              { color: isDarkmode ? themeColor.white : "#212529" },
+            ]}
+          >
+            시작 시간 * (HH:MM)
+          </Text>
           <CustomTimePicker value={startTime} onChange={setStartTime} />
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>종료 시간 (선택사항)</Text>
+          <Text
+            style={[
+              styles.label,
+              { color: isDarkmode ? themeColor.white : "#212529" },
+            ]}
+          >
+            종료 시간 (선택사항)
+          </Text>
           <CustomTimePicker value={endTime} onChange={setEndTime} />
         </View>
 
         <View style={styles.formGroup}>
-          <Text style={styles.label}>장소 (선택사항)</Text>
+          <Text
+            style={[
+              styles.label,
+              { color: isDarkmode ? themeColor.white : "#212529" },
+            ]}
+          >
+            장소 (선택사항)
+          </Text>
           {!directInput && (
             <TouchableOpacity
-              style={styles.locationSelector}
+              style={[
+                styles.locationSelector,
+                {
+                  borderColor: isDarkmode ? themeColor.dark200 : "#ced4da",
+                  backgroundColor: isDarkmode ? themeColor.dark200 : "#fff",
+                },
+              ]}
               onPress={() => setShowGroundModal(true)}
             >
               <Text
                 style={
-                  location ? styles.locationText : styles.locationPlaceholder
+                  location
+                    ? [
+                        styles.locationText,
+                        { color: isDarkmode ? themeColor.white : "#212529" },
+                      ]
+                    : [
+                        styles.locationPlaceholder,
+                        { color: isDarkmode ? themeColor.gray400 : "#6c757d" },
+                      ]
                 }
               >
                 {location || "족구장을 선택하세요"}
               </Text>
-              <FontAwesome name="chevron-down" size={14} color="#6c757d" />
+              <FontAwesome
+                name="chevron-down"
+                size={14}
+                color={isDarkmode ? themeColor.gray400 : "#6c757d"}
+              />
             </TouchableOpacity>
           )}
 
           {directInput && (
             <View>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  {
+                    borderColor: isDarkmode ? themeColor.dark200 : "#ced4da",
+                    backgroundColor: isDarkmode ? themeColor.dark200 : "#fff",
+                    color: isDarkmode ? themeColor.white : "#212529",
+                  },
+                ]}
                 value={location}
                 onChangeText={setLocation}
                 placeholder="장소를 직접 입력하세요"
+                placeholderTextColor={
+                  isDarkmode ? themeColor.gray400 : "#6c757d"
+                }
               />
               <TouchableOpacity
                 style={styles.selectFromListButton}

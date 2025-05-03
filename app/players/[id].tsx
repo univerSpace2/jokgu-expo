@@ -37,7 +37,7 @@ export default function PlayerDetailScreen() {
   const [loadingBanks, setLoadingBanks] = useState(true);
   const [saving, setSaving] = useState(false);
   const router = useRouter();
-  const { isDarkmode } = useTheme();
+  const isDarkmode = false;
 
   const fetchBanks = async () => {
     try {

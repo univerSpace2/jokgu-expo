@@ -8,11 +8,14 @@ import {
   Alert,
   ScrollView,
   Switch,
+  Modal,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { supabase } from "../../lib/supabase";
-import { Meeting, Player } from "../../types";
+import { Meeting, Player, Position } from "../../types";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
+import { positionAPI } from "../../lib/api";
+import { useTheme, themeColor } from "react-native-rapi-ui";
 
 // 게임 방식 옵션 정의
 const GAME_FORMATS = [
@@ -35,13 +38,23 @@ export default function NewGameScreen() {
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [meetingPlayers, setMeetingPlayers] = useState<Player[]>([]);
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [teamPositions, setTeamPositions] = useState<{
+    [teamId: number]: { [playerId: string]: number };
+  }>({});
+  const [showPositionModal, setShowPositionModal] = useState(false);
+  const [currentTeamIndex, setCurrentTeamIndex] = useState<number | null>(null);
+  const [currentPlayerId, setCurrentPlayerId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // 팀 관련 상태
-  const [numTeams, setNumTeams] = useState(2); // 기본 2팀
+  // 팀 관련 상태 - 항상 2팀으로 고정
   const [teams, setTeams] = useState<{ name: string; players: string[] }[]>([
     { name: "팀 1", players: [] },
     { name: "팀 2", players: [] },
   ]);
+
+  // 다크모드 적용을 위한 Hook 추가
+  const isDarkmode = false;
 
   // 단계 관리
   const [step, setStep] = useState(1);
@@ -59,7 +72,20 @@ export default function NewGameScreen() {
     } else {
       fetchPlayers(); // 모임에 속하지 않은 경우 모든 플레이어 가져오기
     }
+
+    // 포지션 데이터 가져오기
+    fetchPositions();
   }, [urlMeetingId]);
+
+  // 포지션 데이터 가져오기
+  async function fetchPositions() {
+    try {
+      const positionData = await positionAPI.getAll();
+      setPositions(positionData);
+    } catch (error) {
+      console.error("포지션 목록을 불러오는 중 오류 발생:", error);
+    }
+  }
 
   // 게임 방식 변경 핸들러
   const handleFormatChange = (format: (typeof GAME_FORMATS)[0]) => {
@@ -152,35 +178,21 @@ export default function NewGameScreen() {
         newTeams[teamIndex].players = newTeams[teamIndex].players.filter(
           (id) => id !== playerId
         );
+
+        // 팀 포지션 정보에서도 제거
+        setTeamPositions((prev) => {
+          const newPositions = { ...prev };
+          if (newPositions[teamIndex] && newPositions[teamIndex][playerId]) {
+            const { [playerId]: removed, ...rest } = newPositions[teamIndex];
+            newPositions[teamIndex] = rest;
+          }
+          return newPositions;
+        });
       } else {
         newTeams[teamIndex].players.push(playerId);
       }
 
       return newTeams;
-    });
-  }
-
-  // 팀 갯수 변경
-  function handleTeamCountChange(count: number) {
-    if (count < 2) count = 2; // 최소 2팀
-    if (count > 4) count = 4; // 최대 4팀
-
-    setNumTeams(count);
-
-    // 팀 배열 조정
-    setTeams((prevTeams) => {
-      if (count > prevTeams.length) {
-        // 팀 추가
-        const newTeams = [...prevTeams];
-        for (let i = prevTeams.length; i < count; i++) {
-          newTeams.push({ name: `팀 ${i + 1}`, players: [] });
-        }
-        return newTeams;
-      } else if (count < prevTeams.length) {
-        // 팀 제거
-        return prevTeams.slice(0, count);
-      }
-      return prevTeams;
     });
   }
 
@@ -194,6 +206,36 @@ export default function NewGameScreen() {
         Alert.alert("오류", "각 팀에 최소 한 명의 플레이어를 추가해야 합니다.");
         return;
       }
+
+      // 팀원 수 검증 (3명 또는 4명)
+      const invalidTeams = teams.filter(
+        (team) => team.players.length !== 3 && team.players.length !== 4
+      );
+
+      if (invalidTeams.length > 0) {
+        setErrorMessage("각 팀은 3명 또는 4명으로 구성되어야 합니다.");
+        return;
+      }
+
+      // 모든 팀원의 포지션이 선택되었는지 확인
+      let missingPositions = false;
+      teams.forEach((team, teamIndex) => {
+        team.players.forEach((playerId) => {
+          if (
+            !teamPositions[teamIndex] ||
+            !teamPositions[teamIndex][playerId]
+          ) {
+            missingPositions = true;
+          }
+        });
+      });
+
+      if (missingPositions) {
+        setErrorMessage("모든 팀원의 포지션을 지정해야 합니다.");
+        return;
+      }
+
+      setErrorMessage(null);
     }
 
     if (step === 5) {
@@ -229,89 +271,116 @@ export default function NewGameScreen() {
       setLoading(true);
 
       // 1. 게임 생성
-      const { data: gameData, error: gameError } = await supabase
+      const gameResponse = await supabase
         .from("game")
-        .insert([
-          {
-            meeting_id: urlMeetingId || null,
-            num_of_sets: parseInt(numOfSets),
-            winning_score: parseInt(winningScore),
-            wins_required: parseInt(winsRequired), // 필요 승리 세트 수 추가
-            use_deuce: useDeuce, // 듀스 사용 여부 추가
-            penalty_details: penaltyDetails.trim() || null,
-          },
-        ])
-        .select();
+        .insert({
+          meeting_id: meeting?.id,
+          num_of_sets: parseInt(numOfSets),
+          winning_score: parseInt(winningScore),
+          wins_required: parseInt(winsRequired),
+          use_deuce: useDeuce,
+          penalty_details: penaltyDetails || null,
+        })
+        .select()
+        .single();
 
-      if (gameError || !gameData) {
-        Alert.alert("등록 실패", "게임 등록 중 오류가 발생했습니다.");
-        console.error("게임 등록 오류:", gameError);
-        return;
-      }
+      if (gameResponse.error) throw gameResponse.error;
+      const gameId = gameResponse.data.id;
 
-      const gameId = gameData[0].id;
-
-      // 2. 팀 생성
-      for (const team of teams) {
-        // 팀 생성
-        const { data: teamData, error: teamError } = await supabase
+      // 2. 각 팀 생성
+      for (let i = 0; i < teams.length; i++) {
+        const team = teams[i];
+        const teamResponse = await supabase
           .from("game_team")
-          .insert([
-            {
-              game_id: gameId,
-              team_name: team.name,
-            },
-          ])
-          .select();
+          .insert({
+            game_id: gameId,
+            team_name: team.name,
+          })
+          .select()
+          .single();
 
-        if (teamError || !teamData) {
-          console.error("팀 생성 오류:", teamError);
-          continue; // 오류가 있지만 계속 진행
-        }
+        if (teamResponse.error) throw teamResponse.error;
+        const teamId = teamResponse.data.id;
 
-        const teamId = teamData[0].id;
+        // 3. 각 팀의 플레이어 등록
+        for (const playerId of team.players) {
+          const positionNumber =
+            teamPositions[i] && teamPositions[i][playerId]
+              ? teamPositions[i][playerId]
+              : null;
 
-        // 팀 구성원 추가
-        if (team.players.length > 0) {
-          const teamMembers = team.players.map((playerId) => ({
-            game_team_id: teamId,
-            player_id: playerId,
-          }));
+          let positionId = null;
 
-          const { error: teamMemberError } = await supabase
-            .from("game_team_member")
-            .insert(teamMembers);
+          if (positionNumber) {
+            // 포지션 이름 결정
+            let positionName = "";
+            const isThreePlayer = team.players.length === 3;
 
-          if (teamMemberError) {
-            console.error("팀 구성원 추가 오류:", teamMemberError);
+            if (isThreePlayer) {
+              switch (positionNumber) {
+                case 1:
+                  positionName = "수비(솔로)";
+                  break;
+                case 2:
+                  positionName = "공격수";
+                  break;
+                case 3:
+                  positionName = "세터";
+                  break;
+              }
+            } else {
+              switch (positionNumber) {
+                case 1:
+                  positionName = "수비(우)";
+                  break;
+                case 2:
+                  positionName = "수비(좌)";
+                  break;
+                case 3:
+                  positionName = "공격수";
+                  break;
+                case 4:
+                  positionName = "세터";
+                  break;
+              }
+            }
+
+            // 로컬에 저장된 포지션 데이터에서 ID 찾기
+            const positionData = positions.find(
+              (p) => p.position_name === positionName
+            );
+            positionId = positionData?.id || null;
           }
+
+          // 플레이어의 포지션 정보 기록
+          const memberResponse = await supabase
+            .from("game_team_member")
+            .insert({
+              game_team_id: teamId,
+              player_id: playerId,
+              f_position: positionId,
+            });
+
+          if (memberResponse.error) throw memberResponse.error;
         }
       }
 
-      // 3. 게임 세트 생성
-      const gameSets = [];
+      // 4. 각 세트 생성
       for (let i = 1; i <= parseInt(numOfSets); i++) {
-        gameSets.push({
+        const setResponse = await supabase.from("game_set").insert({
           game_id: gameId,
           set_number: i,
           target_score: parseInt(winningScore),
         });
+
+        if (setResponse.error) throw setResponse.error;
       }
 
-      const { error: setError } = await supabase
-        .from("game_set")
-        .insert(gameSets);
-
-      if (setError) {
-        console.error("게임 세트 생성 오류:", setError);
-      }
-
-      Alert.alert("등록 완료", "게임이 성공적으로 등록되었습니다.", [
-        { text: "확인", onPress: () => router.push(`/games/${gameId}`) },
-      ]);
-    } catch (error) {
-      console.error("게임 등록 중 오류 발생:", error);
-      Alert.alert("오류", "게임 등록 중 오류가 발생했습니다.");
+      // 성공적으로 완료됨
+      router.replace(`/games/${gameId}`);
+    } catch (error: any) {
+      Alert.alert("오류", `게임 생성 중 오류가 발생했습니다: ${error.message}`);
+      console.error("게임 생성 중 오류:", error);
     } finally {
       setLoading(false);
     }
@@ -345,48 +414,62 @@ export default function NewGameScreen() {
     }
   }
 
-  // 1단계: 팀 갯수 및 팀 구성 설정
+  // 1단계: 팀 구성 설정
   function renderTeamSetup() {
     const availablePlayers = urlMeetingId ? meetingPlayers : players;
 
     return (
       <>
         <View style={styles.stepHeader}>
-          <Text style={styles.stepTitle}>1. 팀 구성</Text>
+          <Text
+            style={[
+              styles.stepTitle,
+              { color: isDarkmode ? themeColor.white : "#212529" },
+            ]}
+          >
+            1. 팀 구성
+          </Text>
         </View>
 
-        <View style={styles.teamCountContainer}>
-          <Text style={styles.label}>팀 수</Text>
-          <View style={styles.teamCountControls}>
-            <TouchableOpacity
-              style={styles.teamCountButton}
-              onPress={() => handleTeamCountChange(numTeams - 1)}
-              disabled={numTeams <= 2}
-            >
-              <Text style={styles.teamCountButtonText}>-</Text>
-            </TouchableOpacity>
-            <Text style={styles.teamCountText}>{numTeams}</Text>
-            <TouchableOpacity
-              style={styles.teamCountButton}
-              onPress={() => handleTeamCountChange(numTeams + 1)}
-              disabled={numTeams >= 4}
-            >
-              <Text style={styles.teamCountButtonText}>+</Text>
-            </TouchableOpacity>
+        {errorMessage && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{errorMessage}</Text>
           </View>
-        </View>
+        )}
 
         {teams.map((team, teamIndex) => (
-          <View key={teamIndex} style={styles.teamSection}>
+          <View
+            key={teamIndex}
+            style={[
+              styles.teamSection,
+              { backgroundColor: isDarkmode ? themeColor.dark200 : "#f8f9fa" },
+            ]}
+          >
             <View style={styles.teamHeader}>
               <TextInput
-                style={styles.teamNameInput}
+                style={[
+                  styles.teamNameInput,
+                  { color: isDarkmode ? themeColor.white : "#212529" },
+                ]}
                 value={team.name}
                 onChangeText={(text) => updateTeamName(teamIndex, text)}
                 placeholder={`팀 ${teamIndex + 1} 이름`}
+                placeholderTextColor={isDarkmode ? "#6c757d" : "#adb5bd"}
               />
-              <Text style={styles.teamPlayerCount}>
+              <Text
+                style={[
+                  styles.teamPlayerCount,
+                  { color: isDarkmode ? themeColor.white : "#6c757d" },
+                  team.players.length !== 3 &&
+                    team.players.length !== 4 &&
+                    styles.invalidTeamCount,
+                ]}
+              >
                 {team.players.length}명
+                {team.players.length > 0 &&
+                  team.players.length !== 3 &&
+                  team.players.length !== 4 &&
+                  " (3명 또는 4명 필요)"}
               </Text>
             </View>
 
@@ -396,14 +479,21 @@ export default function NewGameScreen() {
                 const otherTeamIndex = getPlayerTeamIndex(player.id);
                 const isInOtherTeam =
                   otherTeamIndex !== -1 && otherTeamIndex !== teamIndex;
+                const hasPosition = teamPositions[teamIndex]?.[player.id];
 
                 return (
                   <TouchableOpacity
                     key={player.id}
                     style={[
                       styles.playerItem,
+                      {
+                        backgroundColor: isDarkmode
+                          ? themeColor.dark200
+                          : "#ffffff",
+                      },
                       isSelected && styles.playerItemSelected,
                       isInOtherTeam && styles.playerItemDisabled,
+                      isSelected && !hasPosition && styles.playerNoPosition,
                     ]}
                     onPress={() => togglePlayerInTeam(teamIndex, player.id)}
                     disabled={isInOtherTeam}
@@ -411,12 +501,42 @@ export default function NewGameScreen() {
                     <Text
                       style={[
                         styles.playerName,
-                        isSelected && styles.playerNameSelected,
+                        {
+                          color: isDarkmode
+                            ? isSelected
+                              ? "white"
+                              : themeColor.white
+                            : isSelected
+                            ? "white"
+                            : "#212529",
+                        },
                         isInOtherTeam && styles.playerNameDisabled,
                       ]}
                     >
                       {player.name}
                     </Text>
+                    {isSelected && (
+                      <TouchableOpacity
+                        style={styles.positionButton}
+                        onPress={() => {
+                          setCurrentTeamIndex(teamIndex);
+                          setCurrentPlayerId(player.id);
+                          setShowPositionModal(true);
+                        }}
+                      >
+                        <Text style={styles.positionButtonText}>
+                          {hasPosition
+                            ? team.players.length === 3
+                              ? ["수비(솔로)", "공격수", "세터"][
+                                  hasPosition - 1
+                                ]
+                              : ["수비(우)", "수비(좌)", "공격수", "세터"][
+                                  hasPosition - 1
+                                ]
+                            : "포지션"}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
                     {isInOtherTeam && (
                       <Text style={styles.playerTeamHint}>
                         {teams[otherTeamIndex].name}
@@ -426,7 +546,12 @@ export default function NewGameScreen() {
                 );
               })}
               {availablePlayers.length === 0 && (
-                <Text style={styles.noPlayersText}>
+                <Text
+                  style={[
+                    styles.noPlayersText,
+                    { color: isDarkmode ? themeColor.gray : "#6c757d" },
+                  ]}
+                >
                   {urlMeetingId
                     ? "이 모임에 참여자가 없습니다."
                     : "등록된 플레이어가 없습니다."}
@@ -435,6 +560,284 @@ export default function NewGameScreen() {
             </ScrollView>
           </View>
         ))}
+
+        {/* 포지션 선택 모달 */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={showPositionModal}
+          onRequestClose={() => setShowPositionModal(false)}
+        >
+          <View style={styles.centeredView}>
+            <View
+              style={[
+                styles.modalView,
+                { backgroundColor: isDarkmode ? themeColor.dark : "white" },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.modalTitle,
+                  { color: isDarkmode ? themeColor.white : "#212529" },
+                ]}
+              >
+                포지션 선택
+              </Text>
+
+              {currentTeamIndex !== null && teams[currentTeamIndex] && (
+                <View style={styles.positionOptions}>
+                  {teams[currentTeamIndex].players.length === 3 ? (
+                    // 3인 팀 포지션 선택
+                    <>
+                      <TouchableOpacity
+                        style={[
+                          styles.positionOption,
+                          {
+                            backgroundColor: isDarkmode
+                              ? themeColor.dark200
+                              : "#f5f5f5",
+                          },
+                        ]}
+                        onPress={() => {
+                          if (currentTeamIndex !== null && currentPlayerId) {
+                            setTeamPositions((prev) => ({
+                              ...prev,
+                              [currentTeamIndex]: {
+                                ...(prev[currentTeamIndex] || {}),
+                                [currentPlayerId]: 1,
+                              },
+                            }));
+                            setShowPositionModal(false);
+                          }
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.positionText,
+                            {
+                              color: isDarkmode ? themeColor.white : "#212529",
+                            },
+                          ]}
+                        >
+                          1: 수비(솔로)
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.positionOption,
+                          {
+                            backgroundColor: isDarkmode
+                              ? themeColor.dark200
+                              : "#f5f5f5",
+                          },
+                        ]}
+                        onPress={() => {
+                          if (currentTeamIndex !== null && currentPlayerId) {
+                            setTeamPositions((prev) => ({
+                              ...prev,
+                              [currentTeamIndex]: {
+                                ...(prev[currentTeamIndex] || {}),
+                                [currentPlayerId]: 2,
+                              },
+                            }));
+                            setShowPositionModal(false);
+                          }
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.positionText,
+                            {
+                              color: isDarkmode ? themeColor.white : "#212529",
+                            },
+                          ]}
+                        >
+                          2: 공격수
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.positionOption,
+                          {
+                            backgroundColor: isDarkmode
+                              ? themeColor.dark200
+                              : "#f5f5f5",
+                          },
+                        ]}
+                        onPress={() => {
+                          if (currentTeamIndex !== null && currentPlayerId) {
+                            setTeamPositions((prev) => ({
+                              ...prev,
+                              [currentTeamIndex]: {
+                                ...(prev[currentTeamIndex] || {}),
+                                [currentPlayerId]: 3,
+                              },
+                            }));
+                            setShowPositionModal(false);
+                          }
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.positionText,
+                            {
+                              color: isDarkmode ? themeColor.white : "#212529",
+                            },
+                          ]}
+                        >
+                          3: 세터
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  ) : (
+                    // 4인 팀 포지션 선택
+                    <>
+                      <TouchableOpacity
+                        style={[
+                          styles.positionOption,
+                          {
+                            backgroundColor: isDarkmode
+                              ? themeColor.dark200
+                              : "#f5f5f5",
+                          },
+                        ]}
+                        onPress={() => {
+                          if (currentTeamIndex !== null && currentPlayerId) {
+                            setTeamPositions((prev) => ({
+                              ...prev,
+                              [currentTeamIndex]: {
+                                ...(prev[currentTeamIndex] || {}),
+                                [currentPlayerId]: 1,
+                              },
+                            }));
+                            setShowPositionModal(false);
+                          }
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.positionText,
+                            {
+                              color: isDarkmode ? themeColor.white : "#212529",
+                            },
+                          ]}
+                        >
+                          1: 수비(우)
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.positionOption,
+                          {
+                            backgroundColor: isDarkmode
+                              ? themeColor.dark200
+                              : "#f5f5f5",
+                          },
+                        ]}
+                        onPress={() => {
+                          if (currentTeamIndex !== null && currentPlayerId) {
+                            setTeamPositions((prev) => ({
+                              ...prev,
+                              [currentTeamIndex]: {
+                                ...(prev[currentTeamIndex] || {}),
+                                [currentPlayerId]: 2,
+                              },
+                            }));
+                            setShowPositionModal(false);
+                          }
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.positionText,
+                            {
+                              color: isDarkmode ? themeColor.white : "#212529",
+                            },
+                          ]}
+                        >
+                          2: 수비(좌)
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.positionOption,
+                          {
+                            backgroundColor: isDarkmode
+                              ? themeColor.dark200
+                              : "#f5f5f5",
+                          },
+                        ]}
+                        onPress={() => {
+                          if (currentTeamIndex !== null && currentPlayerId) {
+                            setTeamPositions((prev) => ({
+                              ...prev,
+                              [currentTeamIndex]: {
+                                ...(prev[currentTeamIndex] || {}),
+                                [currentPlayerId]: 3,
+                              },
+                            }));
+                            setShowPositionModal(false);
+                          }
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.positionText,
+                            {
+                              color: isDarkmode ? themeColor.white : "#212529",
+                            },
+                          ]}
+                        >
+                          3: 공격수
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[
+                          styles.positionOption,
+                          {
+                            backgroundColor: isDarkmode
+                              ? themeColor.dark200
+                              : "#f5f5f5",
+                          },
+                        ]}
+                        onPress={() => {
+                          if (currentTeamIndex !== null && currentPlayerId) {
+                            setTeamPositions((prev) => ({
+                              ...prev,
+                              [currentTeamIndex]: {
+                                ...(prev[currentTeamIndex] || {}),
+                                [currentPlayerId]: 4,
+                              },
+                            }));
+                            setShowPositionModal(false);
+                          }
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.positionText,
+                            {
+                              color: isDarkmode ? themeColor.white : "#212529",
+                            },
+                          ]}
+                        >
+                          4: 세터
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </View>
+              )}
+
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setShowPositionModal(false)}
+              >
+                <Text style={styles.closeButtonText}>닫기</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </>
     );
   }
@@ -638,21 +1041,62 @@ export default function NewGameScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
+    <ScrollView
+      style={[
+        styles.container,
+        { backgroundColor: isDarkmode ? themeColor.dark : "#f8f9fa" },
+      ]}
+    >
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: isDarkmode ? themeColor.dark : "white" },
+        ]}
+      >
         <TouchableOpacity style={styles.backButton} onPress={prevStep}>
-          <FontAwesome name="arrow-left" size={18} color="#007bff" />
-          <Text style={styles.backButtonText}>
+          <FontAwesome
+            name="arrow-left"
+            size={18}
+            color={isDarkmode ? themeColor.primary : "#007bff"}
+          />
+          <Text
+            style={[
+              styles.backButtonText,
+              { color: isDarkmode ? themeColor.primary : "#007bff" },
+            ]}
+          >
             {step === 1 ? "뒤로" : "이전"}
           </Text>
         </TouchableOpacity>
-        <Text style={styles.title}>새 게임 만들기</Text>
+        <Text
+          style={[
+            styles.title,
+            { color: isDarkmode ? themeColor.white : "#212529" },
+          ]}
+        >
+          새 게임 만들기
+        </Text>
       </View>
 
-      <View style={styles.form}>
+      <View
+        style={[
+          styles.form,
+          { backgroundColor: isDarkmode ? themeColor.dark200 : "white" },
+        ]}
+      >
         {meeting && (
-          <View style={styles.meetingInfo}>
-            <Text style={styles.meetingName}>
+          <View
+            style={[
+              styles.meetingInfo,
+              { backgroundColor: isDarkmode ? themeColor.dark200 : "#e9ecef" },
+            ]}
+          >
+            <Text
+              style={[
+                styles.meetingName,
+                { color: isDarkmode ? themeColor.white : "#212529" },
+              ]}
+            >
               모임: {new Date(meeting.meeting_date).toLocaleDateString("ko-KR")}
             </Text>
           </View>
@@ -665,6 +1109,9 @@ export default function NewGameScreen() {
               key={s}
               style={[
                 styles.stepDot,
+                {
+                  backgroundColor: isDarkmode ? themeColor.dark200 : "#dee2e6",
+                },
                 s === step && styles.activeStepDot,
                 s < step && styles.completedStepDot,
               ]}
@@ -980,5 +1427,83 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 8,
+  },
+  errorContainer: {
+    backgroundColor: "#FFEBEE",
+    padding: 10,
+    borderRadius: 4,
+    marginBottom: 15,
+  },
+  errorText: {
+    color: "#B71C1C",
+    fontSize: 14,
+  },
+  invalidTeamCount: {
+    color: "#B71C1C",
+  },
+  playerNoPosition: {
+    borderColor: "#FFC107",
+    borderWidth: 2,
+  },
+  positionButton: {
+    marginTop: 5,
+    backgroundColor: "#E0E0E0",
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+    borderRadius: 4,
+  },
+  positionButtonText: {
+    fontSize: 12,
+    color: "#424242",
+  },
+  centeredView: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+  },
+  modalView: {
+    backgroundColor: "white",
+    borderRadius: 10,
+    padding: 20,
+    width: "80%",
+    maxHeight: "80%",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginBottom: 15,
+    textAlign: "center",
+  },
+  positionOptions: {
+    marginVertical: 10,
+  },
+  positionOption: {
+    padding: 12,
+    marginVertical: 5,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 5,
+  },
+  positionText: {
+    fontSize: 16,
+  },
+  closeButton: {
+    backgroundColor: "#E0E0E0",
+    padding: 10,
+    borderRadius: 5,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  closeButtonText: {
+    color: "#424242",
+    fontWeight: "bold",
   },
 });

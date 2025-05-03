@@ -11,20 +11,18 @@ function TabBarIcon(props: {
 }
 
 export default function TabLayout() {
-  const { isDarkmode, theme } = useTheme();
+  const { theme } = useTheme();
 
   return (
     <Tabs
       initialRouteName="meetings"
       screenOptions={{
         tabBarActiveTintColor: themeColor.primary,
-        tabBarInactiveTintColor: isDarkmode
-          ? themeColor.dark200
-          : themeColor.gray,
+        tabBarInactiveTintColor: themeColor.gray,
         tabBarStyle: {
           borderTopWidth: 1,
-          borderTopColor: isDarkmode ? themeColor.dark200 : themeColor.gray200,
-          backgroundColor: isDarkmode ? themeColor.dark : themeColor.white,
+          borderTopColor: themeColor.gray200,
+          backgroundColor: themeColor.white,
           height: 60,
           paddingBottom: 10,
           paddingTop: 10,
@@ -34,8 +32,8 @@ export default function TabLayout() {
           fontWeight: "500",
         },
         headerStyle: {
-          backgroundColor: isDarkmode ? themeColor.dark : themeColor.white,
-          shadowColor: isDarkmode ? "#000000" : "#f0f0f0",
+          backgroundColor: themeColor.white,
+          shadowColor: "#f0f0f0",
           shadowOffset: {
             width: 0,
             height: 2,
@@ -44,12 +42,10 @@ export default function TabLayout() {
           shadowRadius: 3,
           elevation: 3,
           borderBottomWidth: 1,
-          borderBottomColor: isDarkmode
-            ? themeColor.dark200
-            : themeColor.gray200,
+          borderBottomColor: themeColor.gray200,
         },
         headerTitleStyle: {
-          color: isDarkmode ? themeColor.white : themeColor.black,
+          color: themeColor.black,
           fontWeight: "bold",
         },
         headerShown: false,

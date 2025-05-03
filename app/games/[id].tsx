@@ -25,11 +25,20 @@ import ScoreCounter from "./components/ScoreCounter";
 import ScoreLogComponent from "./components/ScoreLog";
 import { eventEmitter, EventTypes } from "../../lib/eventEmitter";
 import { useAppFocus } from "../../lib/utils";
+import { useTheme, themeColor } from "react-native-rapi-ui";
 
 interface GameWithDetails extends Game {
   meeting_date?: string;
   teams?: (GameTeam & { players?: Player[] })[];
   sets?: GameSet[];
+}
+
+interface TeamPositions {
+  [teamId: string]: { [playerId: string]: number };
+}
+
+interface PlayerWithPosition extends Player {
+  position?: number;
 }
 
 export default function GameDetailScreen() {
@@ -38,7 +47,10 @@ export default function GameDetailScreen() {
 
   const [game, setGame] = useState<Game | null>(null);
   const [teams, setTeams] = useState<GameTeam[]>([]);
-  const [teamMembers, setTeamMembers] = useState<Record<string, Player[]>>({});
+  const [teamMembers, setTeamMembers] = useState<
+    Record<string, PlayerWithPosition[]>
+  >({});
+  const [teamPositions, setTeamPositions] = useState<TeamPositions>({});
   const [gameSets, setGameSets] = useState<GameSet[]>([]);
   const [currentSetIndex, setCurrentSetIndex] = useState(0);
   const [scores, setScores] = useState<Record<string, number>>({});
@@ -50,7 +62,15 @@ export default function GameDetailScreen() {
   const [finalWinnerTeamId, setFinalWinnerTeamId] = useState<string | null>(
     null
   );
+  // 서브 관련 상태
+  const [servingTeamId, setServingTeamId] = useState<string | null>(null);
+  const [servingPlayerIndex, setServingPlayerIndex] = useState<
+    Record<string, number>
+  >({});
+  const [showServeSelector, setShowServeSelector] = useState(false);
+
   const router = useRouter();
+  const { theme } = useTheme();
 
   const fetchGameDetails = useCallback(async () => {
     if (!gameId) return;
@@ -79,23 +99,96 @@ export default function GameDetailScreen() {
 
       setTeams(teamsWithColors);
 
-      // 3. 각 팀의 멤버 가져오기
-      const membersData: Record<string, Player[]> = {};
+      // 3. 각 팀의 멤버와 포지션 가져오기
+      const membersData: Record<string, PlayerWithPosition[]> = {};
+      const positionsData: TeamPositions = {};
+
       for (const team of teamsWithColors) {
         const { data, error } = await supabase
           .from("game_team_member")
           .select(
             `
+            player_id,
+            f_position,
             player:player_id(id, name, contact)
           `
           )
           .eq("game_team_id", team.id);
 
         if (!error && data) {
-          membersData[team.id] = data.map((item: any) => item.player);
+          // 팀원 정보 저장
+          membersData[team.id] = data.map((item: any) => ({
+            ...item.player,
+            position: null, // 초기 포지션 null로 설정
+          }));
+
+          // 포지션 정보 설정
+          positionsData[team.id] = {};
+
+          for (const member of data) {
+            if (member.f_position) {
+              const { data: positionData } = await supabase
+                .from("position")
+                .select("*")
+                .eq("id", member.f_position)
+                .single();
+
+              if (positionData) {
+                // 포지션 이름을 번호로 변환
+                const teamSize = membersData[team.id].length;
+                const isThreePlayer = teamSize === 3;
+                let positionNumber = 0;
+
+                if (isThreePlayer) {
+                  // 3인팀 포지션 매핑
+                  switch (positionData.position_name) {
+                    case "수비(솔로)":
+                      positionNumber = 1;
+                      break;
+                    case "공격수":
+                      positionNumber = 2;
+                      break;
+                    case "세터":
+                      positionNumber = 3;
+                      break;
+                  }
+                } else {
+                  // 4인팀 포지션 매핑
+                  switch (positionData.position_name) {
+                    case "수비(우)":
+                      positionNumber = 1;
+                      break;
+                    case "수비(좌)":
+                      positionNumber = 2;
+                      break;
+                    case "공격수":
+                      positionNumber = 3;
+                      break;
+                    case "세터":
+                      positionNumber = 4;
+                      break;
+                  }
+                }
+
+                if (positionNumber > 0) {
+                  positionsData[team.id][member.player_id] = positionNumber;
+
+                  // 플레이어 객체에도 포지션 정보 추가
+                  const playerIndex = membersData[team.id].findIndex(
+                    (p) => p.id === member.player_id
+                  );
+                  if (playerIndex !== -1) {
+                    membersData[team.id][playerIndex].position = positionNumber;
+                  }
+                }
+              }
+            }
+          }
         }
       }
+
       setTeamMembers(membersData);
+      setTeamPositions(positionsData);
 
       // 4. 게임 세트 가져오기
       const setsData = await gameAPI.getSets(gameId);
@@ -185,6 +278,91 @@ export default function GameDetailScreen() {
     };
   }, [fetchGameDetails]);
 
+  // 서브 선택 가능 여부 확인
+  useEffect(() => {
+    // 세트가 시작되었고 서빙팀을 아직 선택하지 않았다면 서브 선택 모달 표시
+    // 게임이 시작 상태(모든 팀의 점수가 0)일 때만 서브 선택 모달 표시
+    if (
+      gameSets.length > 0 &&
+      !servingTeamId &&
+      !isSetCompleted() &&
+      !finalWinnerTeamId &&
+      isGameStart()
+    ) {
+      setShowServeSelector(true);
+    } else {
+      setShowServeSelector(false);
+    }
+  }, [gameSets, servingTeamId, finalWinnerTeamId, scores]);
+
+  // 게임이 시작 상태인지 확인 (모든 팀 점수가 0인 경우)
+  const isGameStart = () => {
+    // 각 팀의 점수가 모두 0인지 확인
+    const allScoresZero = teams.every((team) => {
+      const teamScore = scores[team.id] || 0;
+      return teamScore === 0;
+    });
+
+    // 득점 로그가 없는지 확인
+    const noScoreLogs = scoreLogs.length === 0;
+
+    return allScoresZero && noScoreLogs;
+  };
+
+  // 서브 팀 선택 함수
+  const selectServingTeam = (teamId: string) => {
+    setServingTeamId(teamId);
+
+    // 각 팀의 1번 포지션 선수부터 서브 시작
+    const newServingPlayerIndex: Record<string, number> = {};
+    teams.forEach((team) => {
+      newServingPlayerIndex[team.id] = 1;
+    });
+
+    setServingPlayerIndex(newServingPlayerIndex);
+    setShowServeSelector(false);
+  };
+
+  // 다음 서버 설정 함수
+  const moveToNextServer = (teamId: string) => {
+    const playersCount = teamMembers[teamId]?.length || 4;
+    const currentIndex = servingPlayerIndex[teamId] || 1;
+
+    // 다음 서버로 이동 (마지막 번호에서는 1번으로 순환)
+    const nextIndex = currentIndex >= playersCount ? 1 : currentIndex + 1;
+
+    setServingPlayerIndex((prev) => ({
+      ...prev,
+      [teamId]: nextIndex,
+    }));
+  };
+
+  // 현재 서빙 중인 선수 정보 얻기
+  const getCurrentServerInfo = () => {
+    if (!servingTeamId) return null;
+
+    const currentTeam = teams.find((t) => t.id === servingTeamId);
+    if (!currentTeam) return null;
+
+    const currentPlayerPosition = servingPlayerIndex[servingTeamId] || 1;
+    const positionNames =
+      teamMembers[servingTeamId]?.length === 3
+        ? ["수비(솔로)", "공격수", "세터"]
+        : ["수비(우)", "수비(좌)", "공격수", "세터"];
+
+    // 해당 포지션을 가진 선수 찾기
+    const currentPlayer = teamMembers[servingTeamId]?.find(
+      (p) => p.position === currentPlayerPosition
+    );
+
+    return {
+      teamName: currentTeam.team_name,
+      playerName: currentPlayer?.name || "알 수 없음",
+      positionName: positionNames[currentPlayerPosition - 1],
+      positionNumber: currentPlayerPosition,
+    };
+  };
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -252,7 +430,14 @@ export default function GameDetailScreen() {
       );
       return;
     }
+
     try {
+      // 서브 팀이 선택되지 않았다면 선택하도록 유도
+      if (!servingTeamId) {
+        setShowServeSelector(true);
+        return;
+      }
+
       // 이미 세트가 종료되었는지 확인
       if (isSetCompleted()) {
         Alert.alert(
@@ -338,6 +523,47 @@ export default function GameDetailScreen() {
         setScoreLogs([logData[0], ...scoreLogs]);
       }
 
+      // 서브 로직 업데이트 (요구사항에 맞게 수정)
+      // 1. 서브는 점수 낸 팀이 함
+      // 2. 서브 첫 시작은 1번이 함
+      // 3. 점수를 내주면(상대팀이 점수를 얻으면) 다음 번호에게 서브 순서가 감
+      // 4. 1->2->3->4 (3명일땐 1->2->3)으로 순환함
+
+      // 이전 서브팀 기억
+      const prevServingTeamId = servingTeamId;
+
+      // 서브권을 득점한 팀으로 변경
+      setServingTeamId(teamId);
+
+      // 서브 첫 시작이거나 서브 팀이 바뀐 경우
+      if (prevServingTeamId !== teamId) {
+        // 처음 서브를 시작하는 팀은 1번 포지션부터 시작
+        if (!servingPlayerIndex[teamId]) {
+          setServingPlayerIndex((prev) => ({
+            ...prev,
+            [teamId]: 1, // 1번 포지션부터 시작
+          }));
+        }
+      } else if (prevServingTeamId === teamId) {
+        // 같은 팀이 연속으로 득점한 경우: 서브 위치 변경 없음
+      }
+
+      // 상대팀이 득점한 경우 원래 서브팀의 다음 서버로 변경
+      if (prevServingTeamId && prevServingTeamId !== teamId) {
+        const prevTeamPlayersCount =
+          teamMembers[prevServingTeamId]?.length || 4;
+        const currentIndex = servingPlayerIndex[prevServingTeamId] || 1;
+
+        // 다음 서버로 이동 (마지막 번호에서는 1번으로 순환)
+        const nextIndex =
+          currentIndex >= prevTeamPlayersCount ? 1 : currentIndex + 1;
+
+        setServingPlayerIndex((prev) => ({
+          ...prev,
+          [prevServingTeamId]: nextIndex, // 이전 서브팀의 다음 선수로 변경
+        }));
+      }
+
       // 듀스 상태 확인
       if (game?.use_deuce) {
         checkDeuceStatus(newScores, currentSet.target_score);
@@ -374,6 +600,7 @@ export default function GameDetailScreen() {
                   setCurrentSetIndex((prev) => prev + 1);
                   setScores({});
                   setIsDeuceActive(false);
+                  setServingTeamId(null); // 새 세트 시작 시 서브팀 리셋
                 } else {
                   Alert.alert("게임 종료", "모든 세트가 종료되었습니다.");
                 }
@@ -443,6 +670,7 @@ export default function GameDetailScreen() {
       );
       return;
     }
+
     try {
       // 현재 점수 가져오기
       const currentScore = scores[teamId] || 0;
@@ -514,6 +742,8 @@ export default function GameDetailScreen() {
       if (game?.use_deuce) {
         checkDeuceStatus(newScores, currentSet.target_score);
       }
+
+      // 서브 상태 업데이트는 필요 없음 (무르기는 서브권 변경 없음)
     } catch (error) {
       console.error("무르기 중 오류 발생:", error);
       Alert.alert("오류", "점수 변경 중 오류가 발생했습니다.");
@@ -604,13 +834,21 @@ export default function GameDetailScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: "#f8f9fa" }]}>
       <ScrollView
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        <View style={styles.header}>
+        <View
+          style={[
+            styles.header,
+            {
+              backgroundColor: "white",
+              borderBottomColor: "#dee2e6",
+            },
+          ]}
+        >
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => router.back()}
@@ -618,7 +856,7 @@ export default function GameDetailScreen() {
             <FontAwesome name="arrow-left" size={18} color="#007bff" />
             <Text style={styles.backButtonText}>뒤로</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>게임 진행</Text>
+          <Text style={[styles.title, { color: "#212529" }]}>게임 진행</Text>
         </View>
 
         {/* 최종 승리팀 안내 */}
@@ -635,7 +873,11 @@ export default function GameDetailScreen() {
             }}
           >
             <Text
-              style={{ color: "#28a745", fontWeight: "bold", fontSize: 16 }}
+              style={{
+                color: "#28a745",
+                fontWeight: "bold",
+                fontSize: 16,
+              }}
             >
               최종 승리팀:{" "}
               {teams.find((t) => t.id === finalWinnerTeamId)?.team_name || "팀"}
@@ -643,10 +885,78 @@ export default function GameDetailScreen() {
           </View>
         )}
 
+        {/* 서브 선택기 */}
+        {showServeSelector && (
+          <View style={[styles.serveSelector, { backgroundColor: "white" }]}>
+            <Text style={[styles.serveSelectorTitle, { color: "#212529" }]}>
+              첫 서브를 넣을 팀을 선택해주세요
+            </Text>
+            <View style={styles.serveSelectorButtons}>
+              {teams.map((team) => (
+                <TouchableOpacity
+                  key={team.id}
+                  style={[
+                    styles.serveSelectorButton,
+                    { backgroundColor: team.team_color || "#007bff" },
+                  ]}
+                  onPress={() => selectServingTeam(team.id)}
+                >
+                  <Text style={styles.serveSelectorButtonText}>
+                    {team.team_name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* 서브 정보 표시 */}
+        {servingTeamId && !finalWinnerTeamId && !isSetCompleted() && (
+          <View style={[styles.serveInfo, { backgroundColor: "white" }]}>
+            {getCurrentServerInfo() && (
+              <>
+                <Text style={[styles.serveInfoTitle, { color: "#212529" }]}>
+                  현재 서브
+                </Text>
+                <View style={styles.serveInfoContent}>
+                  <Text
+                    style={[
+                      styles.serveInfoTeam,
+                      {
+                        color:
+                          teams.find((t) => t.id === servingTeamId)
+                            ?.team_color || "#007bff",
+                        backgroundColor: "#f1f3f5",
+                      },
+                    ]}
+                  >
+                    {getCurrentServerInfo()?.teamName}
+                  </Text>
+                  <Text style={[styles.serveInfoDetail, { color: "#212529" }]}>
+                    {getCurrentServerInfo()?.positionNumber}번 포지션 (
+                    {getCurrentServerInfo()?.positionName}) :{" "}
+                    {getCurrentServerInfo()?.playerName}
+                  </Text>
+                </View>
+              </>
+            )}
+          </View>
+        )}
+
         {/* 게임 정보 */}
-        <View style={styles.gameInfoContainer}>
+        <View
+          style={[
+            styles.gameInfoContainer,
+            {
+              backgroundColor: "white",
+              shadowColor: "#000",
+            },
+          ]}
+        >
           <View style={styles.gameInfoRow}>
-            <Text style={styles.gameInfoLabel}>세트</Text>
+            <Text style={[styles.gameInfoLabel, { color: "#495057" }]}>
+              세트
+            </Text>
             <View style={styles.setSelector}>
               {gameSets.map((set, index) => (
                 <TouchableOpacity
@@ -654,13 +964,19 @@ export default function GameDetailScreen() {
                   style={[
                     styles.setButton,
                     currentSetIndex === index && styles.activeSetButton,
+                    {
+                      backgroundColor:
+                        currentSetIndex === index ? "#007bff" : "#e9ecef",
+                    },
                   ]}
                   onPress={() => changeSet(index)}
                 >
                   <Text
                     style={[
                       styles.setText,
-                      currentSetIndex === index && styles.activeSetText,
+                      {
+                        color: currentSetIndex === index ? "white" : "#495057",
+                      },
                     ]}
                   >
                     {index + 1}
@@ -670,8 +986,10 @@ export default function GameDetailScreen() {
             </View>
           </View>
           <View style={styles.gameInfoRow}>
-            <Text style={styles.gameInfoLabel}>방식</Text>
-            <Text style={styles.gameInfoValue}>
+            <Text style={[styles.gameInfoLabel, { color: "#495057" }]}>
+              방식
+            </Text>
+            <Text style={[styles.gameInfoValue, { color: "#212529" }]}>
               {game && game.wins_required
                 ? `${game.num_of_sets}판 ${game.wins_required}선승제`
                 : `${game?.num_of_sets || "-"}세트`}
@@ -679,8 +997,10 @@ export default function GameDetailScreen() {
             </Text>
           </View>
           <View style={styles.gameInfoRow}>
-            <Text style={styles.gameInfoLabel}>목표</Text>
-            <Text style={styles.gameInfoValue}>
+            <Text style={[styles.gameInfoLabel, { color: "#495057" }]}>
+              목표
+            </Text>
+            <Text style={[styles.gameInfoValue, { color: "#212529" }]}>
               {gameSets[currentSetIndex]?.target_score ||
                 game?.winning_score ||
                 "-"}
@@ -689,14 +1009,97 @@ export default function GameDetailScreen() {
           </View>
           {game?.penalty_details && (
             <View style={styles.gameInfoRow}>
-              <Text style={styles.gameInfoLabel}>벌칙</Text>
-              <Text style={styles.gameInfoValue}>{game.penalty_details}</Text>
+              <Text style={[styles.gameInfoLabel, { color: "#495057" }]}>
+                벌칙
+              </Text>
+              <Text style={[styles.gameInfoValue, { color: "#212529" }]}>
+                {game.penalty_details}
+              </Text>
             </View>
           )}
         </View>
 
+        {/* 팀원 및 포지션 정보 */}
+        <View
+          style={[
+            styles.teamInfoContainer,
+            {
+              backgroundColor: "white",
+              shadowColor: "#000",
+            },
+          ]}
+        >
+          {teams.map((team) => (
+            <View key={team.id} style={styles.teamInfo}>
+              <Text
+                style={[
+                  styles.teamName,
+                  {
+                    color: team.team_color || "#007bff",
+                    borderBottomColor: "#dee2e6",
+                  },
+                ]}
+              >
+                {team.team_name}
+              </Text>
+              <View style={styles.playersList}>
+                {teamMembers[team.id]
+                  ?.slice()
+                  .sort((a, b) => {
+                    // position이 null 또는 undefined인 경우 마지막으로 정렬
+                    if (a.position === null || a.position === undefined)
+                      return 1;
+                    if (b.position === null || b.position === undefined)
+                      return -1;
+                    return (a.position || 999) - (b.position || 999);
+                  })
+                  .map((player) => (
+                    <View
+                      key={player.id}
+                      style={[
+                        styles.playerItem,
+                        servingTeamId === team.id &&
+                          player.position === servingPlayerIndex[team.id] &&
+                          styles.servingPlayer,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.playerPosition,
+                          { color: team.team_color || "#007bff" },
+                        ]}
+                      >
+                        {player.position || "?"}
+                      </Text>
+                      <Text style={[styles.playerName, { color: "#212529" }]}>
+                        {player.name}
+                      </Text>
+                      {servingTeamId === team.id &&
+                        player.position === servingPlayerIndex[team.id] && (
+                          <FontAwesome
+                            name="arrow-circle-right"
+                            size={16}
+                            color="#FFA000"
+                            style={styles.servingIcon}
+                          />
+                        )}
+                    </View>
+                  ))}
+              </View>
+            </View>
+          ))}
+        </View>
+
         {/* 점수판 */}
-        <View style={styles.scoreboardContainer}>
+        <View
+          style={[
+            styles.scoreboardContainer,
+            {
+              backgroundColor: "white",
+              shadowColor: "#000",
+            },
+          ]}
+        >
           {teams.map((team) => (
             <ScoreCounter
               key={team.id}
@@ -710,6 +1113,17 @@ export default function GameDetailScreen() {
               isFinalWinner={finalWinnerTeamId === team.id}
             />
           ))}
+
+          {isSetCompleted() && (
+            <TouchableOpacity
+              style={[styles.confirmButton, { borderTopColor: "#dee2e6" }]}
+              onPress={() => confirm(currentSetIndex)}
+            >
+              <Text style={[styles.confirmButtonText, { color: "#007bff" }]}>
+                세트 결과 확정
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* 득점 로그 */}
@@ -720,6 +1134,7 @@ export default function GameDetailScreen() {
           currentSetId={gameSets[currentSetIndex]?.id}
           isRefreshing={refreshing}
           onRefresh={onRefresh}
+          isDarkMode={false}
         />
       </ScrollView>
     </View>
@@ -729,7 +1144,6 @@ export default function GameDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
   },
   header: {
     flexDirection: "row",
@@ -829,6 +1243,134 @@ const styles = StyleSheet.create({
   deuceTag: {
     color: "#dc3545",
     fontWeight: "bold",
+    marginLeft: 4,
+  },
+  confirmButton: {
+    borderTopWidth: 1,
+    borderTopColor: "#dee2e6",
+    padding: 12,
+    alignItems: "center",
+  },
+  confirmButtonText: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  serveSelector: {
+    backgroundColor: "white",
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 8,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  serveSelectorTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    textAlign: "center",
+    marginBottom: 12,
+  },
+  serveSelectorButtons: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    flexWrap: "wrap",
+  },
+  serveSelectorButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginVertical: 4,
+    backgroundColor: "#007bff",
+  },
+  serveSelectorButtonText: {
+    color: "white",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  serveInfo: {
+    backgroundColor: "white",
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 8,
+    padding: 12,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  serveInfoTitle: {
+    fontSize: 14,
+    fontWeight: "bold",
+    marginBottom: 8,
+  },
+  serveInfoContent: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  serveInfoTeam: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 4,
+    marginRight: 8,
+    fontWeight: "bold",
+  },
+  serveInfoDetail: {
+    fontSize: 14,
+  },
+  teamInfoContainer: {
+    backgroundColor: "white",
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 8,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  teamInfo: {
+    marginBottom: 12,
+  },
+  teamName: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 8,
+    paddingBottom: 4,
+    borderBottomWidth: 1,
+  },
+  playersList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  playerItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginRight: 12,
+    marginBottom: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    backgroundColor: "rgba(0,0,0,0.05)",
+  },
+  servingPlayer: {
+    backgroundColor: "rgba(255,215,0,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(255,215,0,0.5)",
+  },
+  playerPosition: {
+    fontSize: 12,
+    fontWeight: "bold",
+    marginRight: 4,
+  },
+  playerName: {
+    fontSize: 12,
+  },
+  servingIcon: {
     marginLeft: 4,
   },
 });

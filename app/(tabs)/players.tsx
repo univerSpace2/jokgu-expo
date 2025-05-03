@@ -27,7 +27,7 @@ export default function PlayersScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
-  const { theme, isDarkmode } = useTheme();
+  const { theme } = useTheme();
 
   const fetchPlayers = useCallback(async () => {
     try {
@@ -103,7 +103,7 @@ export default function PlayersScreen() {
         middleTextStyle={{
           fontSize: 20,
           fontWeight: "bold",
-          color: isDarkmode ? themeColor.white : themeColor.black,
+          color: themeColor.black,
         }}
         rightContent={
           <Button
@@ -123,12 +123,12 @@ export default function PlayersScreen() {
           <Ionicons
             name="refresh-outline"
             size={20}
-            color={isDarkmode ? themeColor.white : themeColor.black}
+            color={themeColor.black}
             onPress={onRefresh}
           />
         }
-        backgroundColor={isDarkmode ? themeColor.dark : themeColor.white}
-        borderColor={isDarkmode ? themeColor.dark200 : themeColor.gray200}
+        backgroundColor={themeColor.white}
+        borderColor={themeColor.gray200}
       />
 
       {loading && !refreshing ? (
@@ -137,9 +137,7 @@ export default function PlayersScreen() {
             flex: 1,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: isDarkmode
-              ? themeColor.dark100
-              : themeColor.gray100,
+            backgroundColor: themeColor.gray100,
           }}
         >
           <Text>불러오는 중...</Text>
@@ -148,9 +146,7 @@ export default function PlayersScreen() {
         <ScrollView
           style={{
             flex: 1,
-            backgroundColor: isDarkmode
-              ? themeColor.dark100
-              : themeColor.gray100,
+            backgroundColor: themeColor.gray100,
             padding: 16,
           }}
           refreshControl={
@@ -167,20 +163,16 @@ export default function PlayersScreen() {
               >
                 <Section
                   style={{
-                    backgroundColor: isDarkmode
-                      ? themeColor.dark
-                      : themeColor.white,
+                    backgroundColor: themeColor.white,
                     padding: 16,
                     borderRadius: 16,
-                    shadowColor: isDarkmode ? "#000" : "#888",
+                    shadowColor: "#888",
                     shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: isDarkmode ? 0.2 : 0.08,
+                    shadowOpacity: 0.08,
                     shadowRadius: 8,
                     elevation: 3,
                     borderWidth: 1,
-                    borderColor: isDarkmode
-                      ? themeColor.dark200
-                      : themeColor.gray200,
+                    borderColor: themeColor.gray200,
                     flexDirection: "row",
                     justifyContent: "flex-start",
                     alignItems: "flex-start",
@@ -191,7 +183,7 @@ export default function PlayersScreen() {
                       fontWeight="bold"
                       size="h3"
                       style={{
-                        color: isDarkmode ? themeColor.white : themeColor.black,
+                        color: themeColor.black,
                         marginBottom: 4,
                       }}
                     >
@@ -204,17 +196,13 @@ export default function PlayersScreen() {
                         <Ionicons
                           name="call-outline"
                           size={14}
-                          color={
-                            isDarkmode ? themeColor.gray400 : themeColor.gray500
-                          }
+                          color={themeColor.gray400}
                           style={{ marginRight: 4 }}
                         />
                         <Text
                           size="sm"
                           style={{
-                            color: isDarkmode
-                              ? themeColor.gray400
-                              : themeColor.gray500,
+                            color: themeColor.gray500,
                           }}
                         >
                           {player.contact}
@@ -232,17 +220,13 @@ export default function PlayersScreen() {
                         <Ionicons
                           name="card-outline"
                           size={14}
-                          color={
-                            isDarkmode ? themeColor.gray400 : themeColor.gray500
-                          }
+                          color={themeColor.gray400}
                           style={{ marginRight: 4 }}
                         />
                         <Text
                           size="sm"
                           style={{
-                            color: isDarkmode
-                              ? themeColor.gray400
-                              : themeColor.gray500,
+                            color: themeColor.gray500,
                           }}
                         >
                           {player.bank_account}
@@ -259,9 +243,7 @@ export default function PlayersScreen() {
                       }}
                       style={{
                         marginLeft: 8,
-                        backgroundColor: isDarkmode
-                          ? "rgba(99, 102, 241, 0.15)"
-                          : "rgba(99, 102, 241, 0.1)",
+                        backgroundColor: "rgba(99, 102, 241, 0.1)",
                         width: 36,
                         height: 36,
                         borderRadius: 18,
@@ -283,9 +265,7 @@ export default function PlayersScreen() {
                       }}
                       style={{
                         marginLeft: 8,
-                        backgroundColor: isDarkmode
-                          ? "rgba(239, 68, 68, 0.15)"
-                          : "rgba(239, 68, 68, 0.1)",
+                        backgroundColor: "rgba(239, 68, 68, 0.1)",
                         width: 36,
                         height: 36,
                         borderRadius: 18,
@@ -296,9 +276,7 @@ export default function PlayersScreen() {
                       <Ionicons
                         name="trash-outline"
                         size={18}
-                        color={
-                          isDarkmode ? themeColor.dark200 : themeColor.gray400
-                        }
+                        color={themeColor.gray400}
                       />
                     </TouchableOpacity>
                   </View>
@@ -318,7 +296,7 @@ export default function PlayersScreen() {
               <Ionicons
                 name="people-outline"
                 size={60}
-                color={isDarkmode ? themeColor.dark200 : themeColor.gray400}
+                color={themeColor.gray400}
                 style={{ marginBottom: 16, opacity: 0.6 }}
               />
               <Text
@@ -326,7 +304,7 @@ export default function PlayersScreen() {
                 fontWeight="bold"
                 style={{
                   marginBottom: 8,
-                  color: isDarkmode ? themeColor.white : themeColor.black,
+                  color: themeColor.black,
                 }}
               >
                 등록된 플레이어가 없습니다.
@@ -334,7 +312,7 @@ export default function PlayersScreen() {
               <Text
                 size="md"
                 style={{
-                  color: isDarkmode ? themeColor.gray400 : themeColor.gray500,
+                  color: themeColor.gray500,
                   textAlign: "center",
                   marginBottom: 20,
                 }}

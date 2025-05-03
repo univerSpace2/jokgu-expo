@@ -272,6 +272,18 @@ export type Database = {
           name?: string;
         };
       };
+      position: {
+        Row: {
+          id: string;
+          position_name: string;
+        };
+        Insert: {
+          position_name: string;
+        };
+        Update: {
+          position_name?: string;
+        };
+      };
     };
   };
 };

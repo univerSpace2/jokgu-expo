@@ -8,6 +8,7 @@ import {
   JokguGroundType,
   Meeting,
   Player,
+  Position,
   ScoreLog,
 } from "../types";
 import { eventEmitter, EventTypes } from "./eventEmitter";
@@ -481,6 +482,19 @@ export const jokguGroundTypeAPI = {
       .from("jokgu_ground_type")
       .select("*")
       .order("type_name");
+
+    if (error) throw error;
+    return data || [];
+  },
+};
+
+export const positionAPI = {
+  // 모든 포지션 조회
+  getAll: async (): Promise<Position[]> => {
+    const { data, error } = await supabase
+      .from("position")
+      .select("*")
+      .order("position_name");
 
     if (error) throw error;
     return data || [];

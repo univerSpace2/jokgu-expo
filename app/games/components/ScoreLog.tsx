@@ -8,14 +8,16 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { ScoreLog as ScoreLogType, GameTeam, GameSet } from "../../../types";
+import { themeColor } from "react-native-rapi-ui";
 
 interface ScoreLogProps {
   logs: ScoreLogType[];
   teams: GameTeam[];
   gameSets?: GameSet[];
   currentSetId?: string;
-  isRefreshing: boolean;
-  onRefresh: () => void;
+  isRefreshing?: boolean;
+  onRefresh?: () => void;
+  isDarkMode?: boolean;
 }
 
 export default function ScoreLog({
@@ -23,8 +25,9 @@ export default function ScoreLog({
   teams,
   gameSets = [],
   currentSetId,
-  isRefreshing,
-  onRefresh,
+  isRefreshing = false,
+  onRefresh = () => {},
+  isDarkMode = false,
 }: ScoreLogProps) {
   const [selectedSetId, setSelectedSetId] = useState<string | null>(
     currentSetId || null
@@ -67,12 +70,32 @@ export default function ScoreLog({
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>득점 기록</Text>
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: isDarkMode ? themeColor.dark : "white",
+          shadowColor: isDarkMode ? "#000" : "#000",
+        },
+      ]}
+    >
+      <Text
+        style={[
+          styles.title,
+          { color: isDarkMode ? themeColor.white : "#212529" },
+        ]}
+      >
+        득점 기록
+      </Text>
 
       {/* 세트 선택 탭 - 세트가 있을 때만 표시 */}
       {gameSets.length > 0 && (
-        <View style={styles.setTabs}>
+        <View
+          style={[
+            styles.setTabs,
+            { borderBottomColor: isDarkMode ? themeColor.dark200 : "#e9ecef" },
+          ]}
+        >
           <TouchableOpacity
             style={[styles.setTab, !selectedSetId && styles.selectedSetTab]}
             onPress={() => setSelectedSetId(null)}
@@ -80,7 +103,11 @@ export default function ScoreLog({
             <Text
               style={[
                 styles.setTabText,
-                !selectedSetId && styles.selectedSetTabText,
+                { color: isDarkMode ? themeColor.gray400 : "#6c757d" },
+                !selectedSetId && [
+                  styles.selectedSetTabText,
+                  { color: "#0085ff" }, // 선택된 탭 색상은 항상 밝게 유지
+                ],
               ]}
             >
               전체
@@ -99,7 +126,11 @@ export default function ScoreLog({
               <Text
                 style={[
                   styles.setTabText,
-                  selectedSetId === set.id && styles.selectedSetTabText,
+                  { color: isDarkMode ? themeColor.gray400 : "#6c757d" },
+                  selectedSetId === set.id && [
+                    styles.selectedSetTabText,
+                    { color: "#0085ff" },
+                  ],
                 ]}
               >
                 {set.set_number}세트
@@ -124,15 +155,37 @@ export default function ScoreLog({
           const team = getTeam(log.game_team_id);
 
           return (
-            <View key={log.id} style={styles.logItem}>
+            <View
+              key={log.id}
+              style={[
+                styles.logItem,
+                {
+                  borderBottomColor: isDarkMode
+                    ? themeColor.dark200
+                    : "#e9ecef",
+                },
+              ]}
+            >
               <View
                 style={[styles.teamIndicator, { backgroundColor: team.color }]}
               />
               <Text style={[styles.logTeam, { color: team.color }]}>
                 {team.name}
               </Text>
-              <Text style={styles.logDetail}>{log.event_details}</Text>
-              <Text style={styles.logTime}>
+              <Text
+                style={[
+                  styles.logDetail,
+                  { color: isDarkMode ? themeColor.white : "#212529" },
+                ]}
+              >
+                {log.event_details}
+              </Text>
+              <Text
+                style={[
+                  styles.logTime,
+                  { color: isDarkMode ? themeColor.gray400 : "#6c757d" },
+                ]}
+              >
                 {koreaTime.toLocaleTimeString("ko-KR", {
                   hour: "2-digit",
                   minute: "2-digit",
@@ -144,7 +197,14 @@ export default function ScoreLog({
         })}
 
         {filteredLogs.length === 0 && (
-          <Text style={styles.emptyText}>아직 기록된 득점이 없습니다.</Text>
+          <Text
+            style={[
+              styles.emptyText,
+              { color: isDarkMode ? themeColor.gray400 : "#6c757d" },
+            ]}
+          >
+            아직 기록된 득점이 없습니다.
+          </Text>
         )}
       </ScrollView>
     </View>
@@ -154,13 +214,11 @@ export default function ScoreLog({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "white",
     marginHorizontal: 16,
     marginTop: 16,
     marginBottom: 16,
     borderRadius: 8,
     padding: 16,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
@@ -175,7 +233,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     marginBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#e9ecef",
   },
   setTab: {
     paddingVertical: 8,
@@ -188,11 +245,9 @@ const styles = StyleSheet.create({
   },
   setTabText: {
     fontSize: 14,
-    color: "#6c757d",
   },
   selectedSetTabText: {
     fontWeight: "600",
-    color: "#0085ff",
   },
   logsList: {
     flex: 1,
@@ -203,7 +258,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: "#e9ecef",
   },
   teamIndicator: {
     width: 4,
@@ -223,11 +277,9 @@ const styles = StyleSheet.create({
   },
   logTime: {
     fontSize: 12,
-    color: "#6c757d",
   },
   emptyText: {
     textAlign: "center",
-    color: "#6c757d",
     marginTop: 20,
     fontStyle: "italic",
   },

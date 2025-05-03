@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { GameTeam, Player } from "../../../types";
+import { useTheme, themeColor } from "react-native-rapi-ui";
 
 interface ScoreCounterProps {
   team: GameTeam;
@@ -24,6 +25,7 @@ export default function ScoreCounter({
   isWinner = false,
   isFinalWinner = false,
 }: ScoreCounterProps) {
+  const isDarkmode = false;
   // 팀 색상 (없으면 기본 색상 사용)
   const teamColor = team.team_color || "#6c757d";
 
@@ -31,7 +33,10 @@ export default function ScoreCounter({
     <View
       style={[
         styles.teamScoreContainer,
-        { borderLeftWidth: 4, borderLeftColor: teamColor },
+        {
+          borderBottomColor: isDarkmode ? themeColor.dark200 : "#e9ecef",
+          backgroundColor: isDarkmode ? themeColor.dark : "transparent",
+        },
       ]}
     >
       <View style={styles.teamInfo}>
@@ -50,7 +55,14 @@ export default function ScoreCounter({
             </View>
           )}
         </View>
-        <Text style={styles.teamMemberCount}>{members.length}명</Text>
+        <Text
+          style={[
+            styles.teamMemberCount,
+            { color: isDarkmode ? themeColor.gray400 : "#6c757d" },
+          ]}
+        >
+          {members.length}명
+        </Text>
       </View>
 
       <View
@@ -59,13 +71,16 @@ export default function ScoreCounter({
           {
             borderColor: teamColor,
             borderWidth: 1,
-            backgroundColor: `${teamColor}10`,
+            backgroundColor: isDarkmode ? `${teamColor}20` : `${teamColor}10`,
           },
           isWinner && styles.winnerScoreControls,
         ]}
       >
         <TouchableOpacity
-          style={styles.scoreButton}
+          style={[
+            styles.scoreButton,
+            { backgroundColor: isDarkmode ? themeColor.dark200 : "white" },
+          ]}
           onPress={() => onDecrement(team.id)}
         >
           <FontAwesome name="minus" size={18} color="#dc3545" />
@@ -74,7 +89,10 @@ export default function ScoreCounter({
         <Text style={[styles.scoreText, { color: teamColor }]}>{score}</Text>
 
         <TouchableOpacity
-          style={styles.scoreButton}
+          style={[
+            styles.scoreButton,
+            { backgroundColor: isDarkmode ? themeColor.dark200 : "white" },
+          ]}
           onPress={() => onIncrement(team.id)}
         >
           <FontAwesome name="plus" size={18} color="#28a745" />
@@ -84,8 +102,23 @@ export default function ScoreCounter({
       {members.length > 0 && (
         <View style={styles.membersList}>
           {members.map((member) => (
-            <View key={member.id} style={styles.memberItem}>
-              <Text style={styles.memberName}>{member.name}</Text>
+            <View
+              key={member.id}
+              style={[
+                styles.memberItem,
+                {
+                  backgroundColor: isDarkmode ? themeColor.dark200 : "#f1f3f5",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.memberName,
+                  { color: isDarkmode ? themeColor.white : "#212529" },
+                ]}
+              >
+                {member.name}
+              </Text>
             </View>
           ))}
         </View>
@@ -99,7 +132,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#e9ecef",
+    paddingHorizontal: 8,
+    paddingTop: 8,
+    borderRadius: 8,
   },
   teamInfo: {
     flexDirection: "row",
@@ -113,13 +148,11 @@ const styles = StyleSheet.create({
   },
   teamMemberCount: {
     fontSize: 14,
-    color: "#6c757d",
   },
   scoreControls: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    backgroundColor: "#f8f9fa",
     borderRadius: 8,
     padding: 12,
   },
@@ -128,7 +161,6 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "white",
     borderRadius: 20,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
@@ -147,7 +179,6 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   memberItem: {
-    backgroundColor: "#f1f3f5",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,

@@ -15,6 +15,7 @@ import { meetingAPI, gameAPI } from "../../lib/api";
 import { eventEmitter, EventTypes } from "../../lib/eventEmitter";
 import { useAppFocus } from "../../lib/utils";
 import { supabase } from "../../lib/supabase";
+import { useTheme, themeColor } from "react-native-rapi-ui";
 
 export default function MeetingDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -27,6 +28,7 @@ export default function MeetingDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
+  const isDarkmode = false;
 
   const fetchMeetingDetails = useCallback(async () => {
     if (!id) return;
@@ -196,12 +198,20 @@ export default function MeetingDetailScreen() {
 
   return (
     <ScrollView
-      style={styles.container}
+      style={[
+        styles.container,
+        { backgroundColor: isDarkmode ? themeColor.dark100 : "#f8f9fa" },
+      ]}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
-      <View style={styles.header}>
+      <View
+        style={[
+          styles.header,
+          { backgroundColor: isDarkmode ? themeColor.dark : "#fff" },
+        ]}
+      >
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
@@ -229,31 +239,73 @@ export default function MeetingDetailScreen() {
       </View>
 
       {/* 모임 정보 */}
-      <View style={styles.meetingInfoCard}>
-        <Text style={styles.meetingDate}>
+      <View
+        style={[
+          styles.meetingInfoCard,
+          { backgroundColor: isDarkmode ? themeColor.dark : "white" },
+        ]}
+      >
+        <Text
+          style={[
+            styles.meetingDate,
+            { color: isDarkmode ? themeColor.white : "#212529" },
+          ]}
+        >
           {formatDate(meeting.meeting_date)}
         </Text>
         <View style={styles.meetingDetails}>
           <View style={styles.detailRow}>
-            <FontAwesome name="clock-o" size={16} color="#6c757d" />
-            <Text style={styles.detailText}>
+            <FontAwesome
+              name="clock-o"
+              size={16}
+              color={isDarkmode ? "#adb5bd" : "#6c757d"}
+            />
+            <Text
+              style={[
+                styles.detailText,
+                { color: isDarkmode ? themeColor.white : "#212529" },
+              ]}
+            >
               {formatTime(meeting.start_time)}
               {meeting.end_time ? ` - ${formatTime(meeting.end_time)}` : ""}
             </Text>
           </View>
           {meeting.location && (
             <View style={styles.detailRow}>
-              <FontAwesome name="map-marker" size={16} color="#6c757d" />
-              <Text style={styles.detailText}>{meeting.location}</Text>
+              <FontAwesome
+                name="map-marker"
+                size={16}
+                color={isDarkmode ? "#adb5bd" : "#6c757d"}
+              />
+              <Text
+                style={[
+                  styles.detailText,
+                  { color: isDarkmode ? themeColor.white : "#212529" },
+                ]}
+              >
+                {meeting.location}
+              </Text>
             </View>
           )}
         </View>
       </View>
 
       {/* 참여자 목록 */}
-      <View style={styles.sectionContainer}>
+      <View
+        style={[
+          styles.sectionContainer,
+          { backgroundColor: isDarkmode ? themeColor.dark : "white" },
+        ]}
+      >
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>참여자</Text>
+          <Text
+            style={[
+              styles.sectionTitle,
+              { color: isDarkmode ? themeColor.white : "#212529" },
+            ]}
+          >
+            참여자
+          </Text>
           <TouchableOpacity
             style={styles.addMemberButton}
             onPress={() => router.push(`/meetings/members?id=${id}`)}
@@ -263,20 +315,54 @@ export default function MeetingDetailScreen() {
         </View>
         <View style={styles.membersList}>
           {members.map((member) => (
-            <View key={member.id} style={styles.memberItem}>
-              <Text style={styles.memberName}>{member.name}</Text>
+            <View
+              key={member.id}
+              style={[
+                styles.memberItem,
+                {
+                  backgroundColor: isDarkmode ? themeColor.dark200 : "#f1f3f5",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.memberName,
+                  { color: isDarkmode ? themeColor.white : "#212529" },
+                ]}
+              >
+                {member.name}
+              </Text>
             </View>
           ))}
           {members.length === 0 && (
-            <Text style={styles.emptyText}>참여자가 없습니다.</Text>
+            <Text
+              style={[
+                styles.emptyText,
+                { color: isDarkmode ? themeColor.gray400 : "#6c757d" },
+              ]}
+            >
+              참여자가 없습니다.
+            </Text>
           )}
         </View>
       </View>
 
       {/* 게임 목록 */}
-      <View style={styles.sectionContainer}>
+      <View
+        style={[
+          styles.sectionContainer,
+          { backgroundColor: isDarkmode ? themeColor.dark : "white" },
+        ]}
+      >
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>게임</Text>
+          <Text
+            style={[
+              styles.sectionTitle,
+              { color: isDarkmode ? themeColor.white : "#212529" },
+            ]}
+          >
+            게임
+          </Text>
           <TouchableOpacity
             style={styles.addGameButton}
             onPress={() => router.push(`/games/new?meetingId=${id}`)}
@@ -288,11 +374,26 @@ export default function MeetingDetailScreen() {
           {games.map((game, index) => (
             <TouchableOpacity
               key={game.id}
-              style={styles.gameCard}
+              style={[
+                styles.gameCard,
+                {
+                  backgroundColor: isDarkmode ? themeColor.dark200 : "#f8f9fa",
+                  borderLeftColor: isDarkmode
+                    ? themeColor.primary800
+                    : "#007bff",
+                },
+              ]}
               onPress={() => router.push(`/games/${game.id}`)}
             >
               <View style={styles.gameHeader}>
-                <Text style={styles.gameTitle}>게임 {index + 1}</Text>
+                <Text
+                  style={[
+                    styles.gameTitle,
+                    { color: isDarkmode ? themeColor.white : "#212529" },
+                  ]}
+                >
+                  게임 {index + 1}
+                </Text>
                 <View style={styles.gameActions}>
                   <TouchableOpacity
                     style={styles.gameActionButton}
@@ -339,8 +440,22 @@ export default function MeetingDetailScreen() {
                   </TouchableOpacity>
                 </View>
               </View>
-              <View style={styles.gameDetails}>
-                <Text style={styles.gameDetail}>
+              <View
+                style={[
+                  styles.gameDetails,
+                  {
+                    backgroundColor: isDarkmode
+                      ? themeColor.dark200
+                      : "#e9ecef",
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.gameDetail,
+                    { color: isDarkmode ? themeColor.gray300 : "#495057" },
+                  ]}
+                >
                   {game.num_of_sets}세트 / {game.winning_score}점
                 </Text>
               </View>
@@ -349,17 +464,17 @@ export default function MeetingDetailScreen() {
                 <View
                   style={{
                     marginTop: 8,
-                    backgroundColor: "#e6ffe6",
+                    backgroundColor: isDarkmode ? "#1e392a" : "#e6ffe6",
                     borderRadius: 4,
                     padding: 4,
                     alignSelf: "flex-start",
                     borderWidth: 1,
-                    borderColor: "#28a745",
+                    borderColor: isDarkmode ? "#2a6e45" : "#28a745",
                   }}
                 >
                   <Text
                     style={{
-                      color: "#28a745",
+                      color: isDarkmode ? "#54d98c" : "#28a745",
                       fontWeight: "bold",
                       fontSize: 13,
                     }}
@@ -371,26 +486,72 @@ export default function MeetingDetailScreen() {
                 <View
                   style={{
                     marginTop: 8,
-                    backgroundColor: "#f1f3f5",
+                    backgroundColor: isDarkmode
+                      ? themeColor.dark200
+                      : "#f1f3f5",
                     borderRadius: 4,
                     padding: 4,
                     alignSelf: "flex-start",
                   }}
                 >
-                  <Text style={{ color: "#6c757d", fontSize: 13 }}>진행중</Text>
+                  <Text
+                    style={{
+                      color: isDarkmode ? themeColor.gray400 : "#6c757d",
+                      fontSize: 13,
+                    }}
+                  >
+                    진행중
+                  </Text>
                 </View>
               )}
               {game.penalty_details && (
-                <View style={styles.penaltyContainer}>
-                  <Text style={styles.penaltyText}>{game.penalty_details}</Text>
+                <View
+                  style={[
+                    styles.penaltyContainer,
+                    {
+                      borderTopColor: isDarkmode
+                        ? themeColor.dark200
+                        : "#dee2e6",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.penaltyText,
+                      { color: isDarkmode ? themeColor.gray400 : "#6c757d" },
+                    ]}
+                  >
+                    {game.penalty_details}
+                  </Text>
                 </View>
               )}
             </TouchableOpacity>
           ))}
           {games.length === 0 && (
-            <View style={styles.emptyGamesContainer}>
-              <Text style={styles.emptyText}>등록된 게임이 없습니다.</Text>
-              <Text style={styles.emptySubText}>새 게임을 시작해보세요!</Text>
+            <View
+              style={[
+                styles.emptyGamesContainer,
+                {
+                  backgroundColor: isDarkmode ? themeColor.dark200 : "#f8f9fa",
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.emptyText,
+                  { color: isDarkmode ? themeColor.gray400 : "#6c757d" },
+                ]}
+              >
+                등록된 게임이 없습니다.
+              </Text>
+              <Text
+                style={[
+                  styles.emptySubText,
+                  { color: isDarkmode ? themeColor.gray500 : "#6c757d" },
+                ]}
+              >
+                새 게임을 시작해보세요!
+              </Text>
             </View>
           )}
         </View>
@@ -456,6 +617,7 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
     marginHorizontal: 16,
     marginBottom: 16,
+    marginTop: 16,
     borderRadius: 8,
     padding: 16,
     shadowColor: "#000",

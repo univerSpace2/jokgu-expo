@@ -27,7 +27,7 @@ export default function MeetingsTab() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
-  const { theme, isDarkmode } = useTheme();
+  const { theme } = useTheme();
 
   const fetchMeetings = useCallback(async () => {
     try {
@@ -92,7 +92,7 @@ export default function MeetingsTab() {
         middleTextStyle={{
           fontSize: 20,
           fontWeight: "bold",
-          color: isDarkmode ? themeColor.white : themeColor.black,
+          color: themeColor.black,
         }}
         rightContent={
           <Button
@@ -112,12 +112,12 @@ export default function MeetingsTab() {
           <Ionicons
             name="refresh-outline"
             size={20}
-            color={isDarkmode ? themeColor.white : themeColor.black}
+            color={themeColor.black}
             onPress={onRefresh}
           />
         }
-        backgroundColor={isDarkmode ? themeColor.dark : themeColor.white}
-        borderColor={isDarkmode ? themeColor.dark200 : themeColor.gray200}
+        backgroundColor={themeColor.white}
+        borderColor={themeColor.gray200}
       />
 
       {loading && !refreshing ? (
@@ -126,9 +126,7 @@ export default function MeetingsTab() {
             flex: 1,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: isDarkmode
-              ? themeColor.dark100
-              : themeColor.gray100,
+            backgroundColor: themeColor.gray100,
           }}
         >
           <Text>불러오는 중...</Text>
@@ -137,9 +135,7 @@ export default function MeetingsTab() {
         <ScrollView
           style={{
             flex: 1,
-            backgroundColor: isDarkmode
-              ? themeColor.dark100
-              : themeColor.gray100,
+            backgroundColor: themeColor.gray100,
             padding: 16,
           }}
           refreshControl={
@@ -156,20 +152,16 @@ export default function MeetingsTab() {
               >
                 <Section
                   style={{
-                    backgroundColor: isDarkmode
-                      ? themeColor.dark
-                      : themeColor.white,
+                    backgroundColor: themeColor.white,
                     padding: 16,
                     borderRadius: 16,
-                    shadowColor: isDarkmode ? "#000" : "#888",
+                    shadowColor: "#888",
                     shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: isDarkmode ? 0.2 : 0.08,
+                    shadowOpacity: 0.08,
                     shadowRadius: 8,
                     elevation: 3,
                     borderWidth: 1,
-                    borderColor: isDarkmode
-                      ? themeColor.dark200
-                      : themeColor.gray200,
+                    borderColor: themeColor.gray200,
                   }}
                 >
                   <View style={{ marginBottom: 12 }}>
@@ -198,17 +190,13 @@ export default function MeetingsTab() {
                       <Ionicons
                         name="time-outline"
                         size={16}
-                        color={
-                          isDarkmode ? themeColor.gray400 : themeColor.gray500
-                        }
+                        color={themeColor.gray400}
                         style={{ marginRight: 4 }}
                       />
                       <Text
                         size="md"
                         style={{
-                          color: isDarkmode
-                            ? themeColor.gray400
-                            : themeColor.gray500,
+                          color: themeColor.gray500,
                         }}
                       >
                         {formatTime(meeting.start_time)} ~{" "}
@@ -218,9 +206,7 @@ export default function MeetingsTab() {
 
                     <View
                       style={{
-                        backgroundColor: isDarkmode
-                          ? themeColor.primary + "30"
-                          : themeColor.primary + "20",
+                        backgroundColor: themeColor.primary + "20",
                         paddingHorizontal: 12,
                         paddingVertical: 6,
                         borderRadius: 16,
@@ -260,7 +246,7 @@ export default function MeetingsTab() {
               <Ionicons
                 name="calendar-outline"
                 size={60}
-                color={isDarkmode ? themeColor.dark200 : themeColor.gray}
+                color={themeColor.gray}
                 style={{ marginBottom: 16, opacity: 0.6 }}
               />
               <Text
@@ -268,7 +254,7 @@ export default function MeetingsTab() {
                 fontWeight="bold"
                 style={{
                   marginBottom: 8,
-                  color: isDarkmode ? themeColor.white : themeColor.black,
+                  color: themeColor.black,
                 }}
               >
                 모임이 없습니다
@@ -276,7 +262,7 @@ export default function MeetingsTab() {
               <Text
                 size="md"
                 style={{
-                  color: isDarkmode ? themeColor.gray400 : themeColor.gray500,
+                  color: themeColor.gray500,
                   textAlign: "center",
                   marginBottom: 20,
                 }}

@@ -34,7 +34,7 @@ export default function GroundDetailScreen() {
   const [groundTypes, setGroundTypes] = useState<JokguGroundType[]>([]);
   const [groundTypeName, setGroundTypeName] = useState("");
   const router = useRouter();
-  const { isDarkmode } = useTheme();
+  const isDarkmode = false;
 
   // 수정 모드 상태 추가
   const [name, setName] = useState("");

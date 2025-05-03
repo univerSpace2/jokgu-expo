@@ -12,6 +12,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { meetingAPI, playerAPI } from "../../lib/api";
 import { Player } from "../../types";
+import { useTheme, themeColor } from "react-native-rapi-ui";
 
 export default function MeetingMembersScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -19,6 +20,7 @@ export default function MeetingMembersScreen() {
   const [allPlayers, setAllPlayers] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const isDarkmode = false;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -83,15 +85,35 @@ export default function MeetingMembersScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>불러오는 중...</Text>
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: isDarkmode ? themeColor.dark100 : "#f8f9fa" },
+        ]}
+      >
+        <Text style={{ color: isDarkmode ? themeColor.white : "#212529" }}>
+          불러오는 중...
+        </Text>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: isDarkmode ? themeColor.dark100 : "#f8f9fa" },
+      ]}
+    >
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: isDarkmode ? themeColor.dark : "white",
+            borderBottomColor: isDarkmode ? themeColor.dark200 : "#dee2e6",
+          },
+        ]}
+      >
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => router.back()}
@@ -99,13 +121,33 @@ export default function MeetingMembersScreen() {
           <FontAwesome name="arrow-left" size={18} color="#007bff" />
           <Text style={styles.backButtonText}>뒤로</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>참여자 관리</Text>
+        <Text
+          style={[
+            styles.title,
+            { color: isDarkmode ? themeColor.white : "#212529" },
+          ]}
+        >
+          참여자 관리
+        </Text>
         <View style={{ width: 50 }} />
       </View>
 
       <View style={styles.content}>
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
+        <View
+          style={[
+            styles.section,
+            {
+              backgroundColor: isDarkmode ? themeColor.dark : "white",
+              shadowColor: isDarkmode ? "#000" : "#000",
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.sectionTitle,
+              { color: isDarkmode ? themeColor.white : "#212529" },
+            ]}
+          >
             현재 참여자 ({members.length}명)
           </Text>
           {members.length > 0 ? (
@@ -113,8 +155,24 @@ export default function MeetingMembersScreen() {
               data={members}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => (
-                <View style={styles.memberItem}>
-                  <Text style={styles.memberName}>{item.name}</Text>
+                <View
+                  style={[
+                    styles.memberItem,
+                    {
+                      borderBottomColor: isDarkmode
+                        ? themeColor.dark200
+                        : "#f1f3f5",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.memberName,
+                      { color: isDarkmode ? themeColor.white : "#212529" },
+                    ]}
+                  >
+                    {item.name}
+                  </Text>
                   <TouchableOpacity
                     style={styles.memberActionButton}
                     onPress={() => {
@@ -138,19 +196,57 @@ export default function MeetingMembersScreen() {
               )}
             />
           ) : (
-            <Text style={styles.emptyText}>참여자가 없습니다.</Text>
+            <Text
+              style={[
+                styles.emptyText,
+                { color: isDarkmode ? themeColor.gray400 : "#6c757d" },
+              ]}
+            >
+              참여자가 없습니다.
+            </Text>
           )}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>플레이어 목록</Text>
+        <View
+          style={[
+            styles.section,
+            {
+              backgroundColor: isDarkmode ? themeColor.dark : "white",
+              shadowColor: isDarkmode ? "#000" : "#000",
+            },
+          ]}
+        >
+          <Text
+            style={[
+              styles.sectionTitle,
+              { color: isDarkmode ? themeColor.white : "#212529" },
+            ]}
+          >
+            플레이어 목록
+          </Text>
           {allPlayers.length > 0 ? (
             <FlatList
               data={allPlayers.filter((player) => !isMember(player.id))}
               keyExtractor={(item) => item.id}
               renderItem={({ item }) => (
-                <View style={styles.playerItem}>
-                  <Text style={styles.playerName}>{item.name}</Text>
+                <View
+                  style={[
+                    styles.playerItem,
+                    {
+                      borderBottomColor: isDarkmode
+                        ? themeColor.dark200
+                        : "#f1f3f5",
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.playerName,
+                      { color: isDarkmode ? themeColor.white : "#212529" },
+                    ]}
+                  >
+                    {item.name}
+                  </Text>
                   <TouchableOpacity
                     style={styles.playerActionButton}
                     onPress={() => handleAddMember(item.id)}
@@ -161,7 +257,14 @@ export default function MeetingMembersScreen() {
               )}
             />
           ) : (
-            <Text style={styles.emptyText}>등록된 플레이어가 없습니다.</Text>
+            <Text
+              style={[
+                styles.emptyText,
+                { color: isDarkmode ? themeColor.gray400 : "#6c757d" },
+              ]}
+            >
+              등록된 플레이어가 없습니다.
+            </Text>
           )}
         </View>
       </View>
@@ -172,7 +275,6 @@ export default function MeetingMembersScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f8f9fa",
   },
   loadingContainer: {
     flex: 1,
@@ -185,8 +287,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "#dee2e6",
-    backgroundColor: "white",
   },
   backButton: {
     flexDirection: "row",
@@ -228,7 +328,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 8,
     borderBottomWidth: 1,
-    borderBottomColor: "#f1f3f5",
   },
   memberName: {
     fontSize: 16,
@@ -243,7 +342,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 8,
     borderBottomWidth: 1,
-    borderBottomColor: "#f1f3f5",
   },
   playerName: {
     fontSize: 16,
@@ -254,6 +352,5 @@ const styles = StyleSheet.create({
   emptyText: {
     textAlign: "center",
     paddingVertical: 16,
-    color: "#6c757d",
   },
 });

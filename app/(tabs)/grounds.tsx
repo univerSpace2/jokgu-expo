@@ -42,7 +42,7 @@ export default function GroundsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
-  const { theme, isDarkmode } = useTheme();
+  const { theme } = useTheme();
 
   // 필터링 & 정렬 상태
   const [sortOption, setSortOption] = useState<SortOption>("name");
@@ -205,7 +205,7 @@ export default function GroundsScreen() {
         >
           <View
             style={{
-              backgroundColor: isDarkmode ? themeColor.dark : themeColor.white,
+              backgroundColor: themeColor.white,
               borderTopLeftRadius: 20,
               borderTopRightRadius: 20,
               padding: 20,
@@ -229,7 +229,7 @@ export default function GroundsScreen() {
               <Text
                 size="h2"
                 style={{
-                  color: isDarkmode ? themeColor.white : themeColor.black,
+                  color: themeColor.black,
                 }}
               >
                 필터 및 정렬
@@ -238,7 +238,7 @@ export default function GroundsScreen() {
                 <Ionicons
                   name="close-outline"
                   size={24}
-                  color={isDarkmode ? themeColor.white : themeColor.black}
+                  color={themeColor.black}
                 />
               </TouchableOpacity>
             </View>
@@ -254,7 +254,7 @@ export default function GroundsScreen() {
                 fontWeight="bold"
                 style={{
                   marginBottom: 10,
-                  color: isDarkmode ? themeColor.white : themeColor.black,
+                  color: themeColor.black,
                 }}
               >
                 정렬 방식
@@ -274,11 +274,7 @@ export default function GroundsScreen() {
                       paddingVertical: 8,
                       backgroundColor:
                         sortOption === option
-                          ? isDarkmode
-                            ? themeColor.primary700
-                            : themeColor.primary
-                          : isDarkmode
-                          ? themeColor.dark200
+                          ? themeColor.primary
                           : themeColor.gray200,
                       borderRadius: 16,
                       marginRight: 8,
@@ -290,11 +286,7 @@ export default function GroundsScreen() {
                       size="sm"
                       style={{
                         color:
-                          sortOption === option
-                            ? "white"
-                            : isDarkmode
-                            ? themeColor.gray300
-                            : themeColor.gray500,
+                          sortOption === option ? "white" : themeColor.gray500,
                       }}
                     >
                       {option === "name"
@@ -310,9 +302,7 @@ export default function GroundsScreen() {
                   style={{
                     paddingHorizontal: 12,
                     paddingVertical: 8,
-                    backgroundColor: isDarkmode
-                      ? themeColor.dark200
-                      : themeColor.gray200,
+                    backgroundColor: themeColor.gray200,
                     borderRadius: 16,
                     marginRight: 8,
                     marginBottom: 8,
@@ -322,9 +312,7 @@ export default function GroundsScreen() {
                   <Text
                     size="sm"
                     style={{
-                      color: isDarkmode
-                        ? themeColor.gray300
-                        : themeColor.gray500,
+                      color: themeColor.gray500,
                     }}
                   >
                     {sortDirection === "asc" ? "오름차순 ↑" : "내림차순 ↓"}
@@ -337,7 +325,7 @@ export default function GroundsScreen() {
                 style={{
                   marginBottom: 10,
                   marginTop: 10,
-                  color: isDarkmode ? themeColor.white : themeColor.black,
+                  color: themeColor.black,
                 }}
               >
                 실내/실외 필터
@@ -357,11 +345,7 @@ export default function GroundsScreen() {
                       paddingVertical: 8,
                       backgroundColor:
                         filters.indoorStatus === option
-                          ? isDarkmode
-                            ? themeColor.primary700
-                            : themeColor.primary
-                          : isDarkmode
-                          ? themeColor.dark200
+                          ? themeColor.primary
                           : themeColor.gray200,
                       borderRadius: 16,
                       marginRight: 8,
@@ -380,8 +364,6 @@ export default function GroundsScreen() {
                         color:
                           filters.indoorStatus === option
                             ? "white"
-                            : isDarkmode
-                            ? themeColor.gray300
                             : themeColor.gray500,
                       }}
                     >
@@ -400,7 +382,7 @@ export default function GroundsScreen() {
                 style={{
                   marginBottom: 10,
                   marginTop: 10,
-                  color: isDarkmode ? themeColor.white : themeColor.black,
+                  color: themeColor.black,
                 }}
               >
                 예약 필터
@@ -421,11 +403,7 @@ export default function GroundsScreen() {
                         paddingVertical: 8,
                         backgroundColor:
                           filters.reservationStatus === option
-                            ? isDarkmode
-                              ? themeColor.primary700
-                              : themeColor.primary
-                            : isDarkmode
-                            ? themeColor.dark200
+                            ? themeColor.primary
                             : themeColor.gray200,
                         borderRadius: 16,
                         marginRight: 8,
@@ -444,8 +422,6 @@ export default function GroundsScreen() {
                           color:
                             filters.reservationStatus === option
                               ? "white"
-                              : isDarkmode
-                              ? themeColor.gray300
                               : themeColor.gray500,
                         }}
                       >
@@ -465,7 +441,7 @@ export default function GroundsScreen() {
                 style={{
                   marginBottom: 10,
                   marginTop: 10,
-                  color: isDarkmode ? themeColor.white : themeColor.black,
+                  color: themeColor.black,
                 }}
               >
                 위치 검색
@@ -473,21 +449,15 @@ export default function GroundsScreen() {
               <TextInput
                 style={{
                   borderWidth: 1,
-                  borderColor: isDarkmode
-                    ? themeColor.dark200
-                    : themeColor.gray200,
+                  borderColor: themeColor.gray200,
                   borderRadius: 8,
                   padding: 10,
                   marginBottom: 16,
-                  color: isDarkmode ? themeColor.white : themeColor.black,
-                  backgroundColor: isDarkmode
-                    ? themeColor.dark100
-                    : themeColor.white,
+                  color: themeColor.black,
+                  backgroundColor: themeColor.white,
                 }}
                 placeholder="주소 또는 이름으로 검색"
-                placeholderTextColor={
-                  isDarkmode ? themeColor.gray500 : themeColor.gray400
-                }
+                placeholderTextColor={themeColor.gray400}
                 value={filters.locationKeyword}
                 onChangeText={(text) =>
                   setFilters((prev) => ({
@@ -531,7 +501,7 @@ export default function GroundsScreen() {
         middleTextStyle={{
           fontSize: 20,
           fontWeight: "bold",
-          color: isDarkmode ? themeColor.white : themeColor.black,
+          color: themeColor.black,
         }}
         leftContent={
           <View style={{ flexDirection: "row" }}>
@@ -545,7 +515,7 @@ export default function GroundsScreen() {
               <Ionicons
                 name="filter-outline"
                 size={22}
-                color={isDarkmode ? themeColor.white : themeColor.black}
+                color={themeColor.black}
               />
             </TouchableOpacity>
           </View>
@@ -566,16 +536,8 @@ export default function GroundsScreen() {
             />
           </View>
         }
-        // leftContent={
-        //   <Ionicons
-        //     name="refresh-outline"
-        //     size={20}
-        //     color={isDarkmode ? themeColor.white : themeColor.black}
-        //     onPress={onRefresh}
-        //   />
-        // }
-        backgroundColor={isDarkmode ? themeColor.dark : themeColor.white}
-        borderColor={isDarkmode ? themeColor.dark200 : themeColor.gray200}
+        backgroundColor={themeColor.white}
+        borderColor={themeColor.gray200}
       />
 
       {loading && !refreshing ? (
@@ -584,9 +546,7 @@ export default function GroundsScreen() {
             flex: 1,
             alignItems: "center",
             justifyContent: "center",
-            backgroundColor: isDarkmode
-              ? themeColor.dark100
-              : themeColor.gray100,
+            backgroundColor: themeColor.gray100,
           }}
         >
           <Text>불러오는 중...</Text>
@@ -595,9 +555,7 @@ export default function GroundsScreen() {
         <ScrollView
           style={{
             flex: 1,
-            backgroundColor: isDarkmode
-              ? themeColor.dark100
-              : themeColor.gray100,
+            backgroundColor: themeColor.gray100,
             padding: 16,
           }}
           refreshControl={
@@ -617,7 +575,7 @@ export default function GroundsScreen() {
               size="sm"
               style={{
                 marginRight: 8,
-                color: isDarkmode ? themeColor.gray300 : themeColor.gray500,
+                color: themeColor.gray500,
               }}
             >
               정렬: {getSortButtonTitle()}
@@ -626,9 +584,7 @@ export default function GroundsScreen() {
             {filters.indoorStatus !== "all" && (
               <View
                 style={{
-                  backgroundColor: isDarkmode
-                    ? "rgba(59, 130, 246, 0.2)"
-                    : "rgba(59, 130, 246, 0.1)",
+                  backgroundColor: "rgba(59, 130, 246, 0.1)",
                   paddingHorizontal: 8,
                   paddingVertical: 4,
                   borderRadius: 4,
@@ -644,9 +600,7 @@ export default function GroundsScreen() {
             {filters.reservationStatus !== "all" && (
               <View
                 style={{
-                  backgroundColor: isDarkmode
-                    ? "rgba(244, 63, 94, 0.2)"
-                    : "rgba(244, 63, 94, 0.1)",
+                  backgroundColor: "rgba(244, 63, 94, 0.1)",
                   paddingHorizontal: 8,
                   paddingVertical: 4,
                   borderRadius: 4,
@@ -664,9 +618,7 @@ export default function GroundsScreen() {
             {filters.locationKeyword.trim() !== "" && (
               <View
                 style={{
-                  backgroundColor: isDarkmode
-                    ? "rgba(139, 92, 246, 0.2)"
-                    : "rgba(139, 92, 246, 0.1)",
+                  backgroundColor: "rgba(139, 92, 246, 0.1)",
                   paddingHorizontal: 8,
                   paddingVertical: 4,
                   borderRadius: 4,
@@ -690,20 +642,16 @@ export default function GroundsScreen() {
               >
                 <Section
                   style={{
-                    backgroundColor: isDarkmode
-                      ? themeColor.dark
-                      : themeColor.white,
+                    backgroundColor: themeColor.white,
                     padding: 16,
                     borderRadius: 16,
-                    shadowColor: isDarkmode ? "#000" : "#888",
+                    shadowColor: "#888",
                     shadowOffset: { width: 0, height: 2 },
-                    shadowOpacity: isDarkmode ? 0.2 : 0.08,
+                    shadowOpacity: 0.08,
                     shadowRadius: 8,
                     elevation: 3,
                     borderWidth: 1,
-                    borderColor: isDarkmode
-                      ? themeColor.dark200
-                      : themeColor.gray200,
+                    borderColor: themeColor.gray200,
                   }}
                 >
                   <View
@@ -718,7 +666,7 @@ export default function GroundsScreen() {
                       fontWeight="bold"
                       size="h3"
                       style={{
-                        color: isDarkmode ? themeColor.white : themeColor.black,
+                        color: themeColor.black,
                       }}
                     >
                       {ground.name}
@@ -726,11 +674,7 @@ export default function GroundsScreen() {
                     <View
                       style={{
                         backgroundColor: ground.reservation_required
-                          ? isDarkmode
-                            ? "rgba(244, 63, 94, 0.2)"
-                            : "rgba(244, 63, 94, 0.1)"
-                          : isDarkmode
-                          ? "rgba(34, 197, 94, 0.2)"
+                          ? "rgba(244, 63, 94, 0.1)"
                           : "rgba(34, 197, 94, 0.1)",
                         paddingHorizontal: 12,
                         paddingVertical: 6,
@@ -763,17 +707,13 @@ export default function GroundsScreen() {
                     <Ionicons
                       name="location-outline"
                       size={16}
-                      color={
-                        isDarkmode ? themeColor.gray400 : themeColor.gray500
-                      }
+                      color={themeColor.gray500}
                       style={{ marginRight: 4 }}
                     />
                     <Text
                       size="md"
                       style={{
-                        color: isDarkmode
-                          ? themeColor.gray400
-                          : themeColor.gray500,
+                        color: themeColor.gray500,
                       }}
                     >
                       {ground.location}
@@ -787,11 +727,7 @@ export default function GroundsScreen() {
                           paddingHorizontal: 8,
                           paddingVertical: 4,
                           backgroundColor: ground.is_indoor
-                            ? isDarkmode
-                              ? "rgba(59, 130, 246, 0.2)"
-                              : "rgba(59, 130, 246, 0.1)"
-                            : isDarkmode
-                            ? "rgba(245, 158, 11, 0.2)"
+                            ? "rgba(59, 130, 246, 0.1)"
                             : "rgba(245, 158, 11, 0.1)",
                           borderRadius: 4,
                           marginRight: 8,
@@ -814,9 +750,7 @@ export default function GroundsScreen() {
                           style={{
                             paddingHorizontal: 8,
                             paddingVertical: 4,
-                            backgroundColor: isDarkmode
-                              ? "rgba(139, 92, 246, 0.2)"
-                              : "rgba(139, 92, 246, 0.1)",
+                            backgroundColor: "rgba(139, 92, 246, 0.1)",
                             borderRadius: 4,
                             marginRight: 8,
                           }}
@@ -832,9 +766,7 @@ export default function GroundsScreen() {
                         style={{
                           paddingHorizontal: 8,
                           paddingVertical: 4,
-                          backgroundColor: isDarkmode
-                            ? "rgba(14, 165, 233, 0.2)"
-                            : "rgba(14, 165, 233, 0.1)",
+                          backgroundColor: "rgba(14, 165, 233, 0.1)",
                           borderRadius: 4,
                           flexDirection: "row",
                           alignItems: "center",
@@ -872,7 +804,7 @@ export default function GroundsScreen() {
               <Ionicons
                 name="map-outline"
                 size={60}
-                color={isDarkmode ? themeColor.dark200 : themeColor.gray}
+                color={themeColor.gray}
                 style={{ marginBottom: 16, opacity: 0.6 }}
               />
               <Text
@@ -880,7 +812,7 @@ export default function GroundsScreen() {
                 fontWeight="bold"
                 style={{
                   marginBottom: 8,
-                  color: isDarkmode ? themeColor.white : themeColor.black,
+                  color: themeColor.black,
                 }}
               >
                 {grounds.length > 0
@@ -890,7 +822,7 @@ export default function GroundsScreen() {
               <Text
                 size="md"
                 style={{
-                  color: isDarkmode ? themeColor.gray400 : themeColor.gray500,
+                  color: themeColor.gray500,
                   textAlign: "center",
                   marginBottom: 20,
                 }}
