@@ -1,7 +1,6 @@
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { useFonts } from "expo-font";
 import { Slot } from "expo-router";
-import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
 import { View } from "react-native";
 import "bootstrap/dist/css/bootstrap.min.css"; // 이 부분은 웹에서만 작동함
@@ -20,27 +19,18 @@ export const unstable_settings = {
   initialRouteName: "(tabs)",
 };
 
-// 앱이 렌더링되기 전에 스플래시 화면을 방지합니다.
-SplashScreen.preventAutoHideAsync();
-
 export default function RootLayout() {
-  const [loaded, error] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     SpaceMono: require("../assets/fonts/SpaceMono-Regular.ttf"),
     ...FontAwesome.font,
   });
 
-  // 글꼴이 로드되면 앱을 렌더링합니다. 그렇지 않으면 스플래시 화면을 표시합니다.
+  // 글꼴 로딩 에러 처리
   useEffect(() => {
-    if (error) throw error;
-  }, [error]);
+    if (fontError) throw fontError;
+  }, [fontError]);
 
-  useEffect(() => {
-    if (loaded) {
-      SplashScreen.hideAsync();
-    }
-  }, [loaded]);
-
-  if (!loaded) {
+  if (!fontsLoaded) {
     return null;
   }
 

@@ -31,7 +31,8 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
+          "backgroundColor": "#ffffff",
+          "hideExponentText": true
         }
       ],
       "expo-font",
@@ -48,6 +49,11 @@
         "projectId": "81530772-9674-496f-a9c6-7057edba6588"
       }
     },
-    "owner": "universpace"
+    "owner": "universpace",
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    }
   }
 }
