@@ -30,7 +30,7 @@
         {
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 500,
-          "resizeMode": "native",
+          "resizeMode": "contain",
           "backgroundColor": "#ffffff",
           "hideExponentText": true
         }
